@@ -79,12 +79,12 @@ No placeholder in angle brackets may remain in the section. Leave the template f
 
 ### 5. Guard commit and push
 
-The user commits (that is how a slice is accepted) and the user pushes. Make sure `.claude/settings.json` denies both, by creating the file or merging these entries into its existing `permissions.deny` list:
+Claude commits and pushes only when the user asks for it in the conversation; it never does so on its own initiative (accepting a slice stays the user's decision). Make sure `.claude/settings.json` asks for confirmation on both, by creating the file or merging these entries into its existing `permissions.ask` list. Do not put them under `permissions.deny`: that blocks the commands even when the user asks for them.
 
 ```json
 {
   "permissions": {
-    "deny": [
+    "ask": [
       "Bash(git commit)",
       "Bash(git commit *)",
       "Bash(git push)",
@@ -98,7 +98,7 @@ The user commits (that is how a slice is accepted) and the user pushes. Make sur
 }
 ```
 
-If you are not allowed to write that file, show the user the entries to add. If the user wants Claude to commit in this project, leave the two commit entries out and say that the acceptance rule in `.claude/rules/spec-driven.md` then needs the user's own wording.
+If you are not allowed to write that file, show the user the entries to add. If the existing `permissions.deny` list already holds any of these entries, move them to `permissions.ask` and tell the user.
 
 ### 6. Prepare the specs folder
 
@@ -135,6 +135,6 @@ Keep these in mind when a situation is not covered.
 - **UI first, on a stub.** A page on fake data is a vertical slice of the UI: the user can use it and judge it. Changing a page before its backend exists costs little; changing it afterwards means changing contracts, queries and tests as well. The wire slice that follows replaces the stub and is proven by an integration test.
 - **A check must be able to fail.** In the trial run, a reviewer without context found a test that passed on any 401 and proved nothing. Hence the question asked of every check: would it fail if the behavior were broken? For tests added to existing behavior, RED means breaking that behavior on purpose, then restoring it.
 - **Diagrams are for the person who approves.** The user accepts a spec and every slice. A picture of what happens and of how it is built lets them judge in a minute what would take much longer from prose and a diff.
-- **The commit is the acceptance.** Claude does not commit. A clean working tree tells the next session that the previous slice was accepted.
+- **The commit is the acceptance.** Claude does not commit on its own initiative: the user commits, or asks Claude to commit. A clean working tree tells the next session that the previous slice was accepted.
 - **A fresh session per slice.** The spec, not the conversation, has to carry the context; building in a new session tests exactly that.
 - **Commit the spec first.** The spec is usually written before the feature branch exists. Advise the user to make it the first commit on that branch, so the approval visibly precedes the code.

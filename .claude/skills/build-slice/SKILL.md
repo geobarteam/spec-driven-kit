@@ -45,7 +45,7 @@ For a slice that only adds tests to behavior that already exists, see each new t
 2. Add one line to the spec's Status: slice, date, proof result, decisions taken.
 3. Stop and report in the conversation: what the user can do now, the proof result, the path of the recap (to open in a Markdown preview for the diagram), and the steps to try it.
 
-Do not commit. The user reads the recap, tries the slice, reviews the diff and commits the code with the recap; that commit is the acceptance. Build the next slice only when the user asks for it and the working tree is clean.
+Do not commit unless the user asks for it. The user reads the recap, tries the slice, reviews the diff and commits the code with the recap, or asks you to commit it; that commit is the acceptance. When asked, commit the code and the recap together in the project's commit format, and push only if the push is asked for as well. Build the next slice only when the user asks for it and the working tree is clean.
 
 ## After the last slice
 

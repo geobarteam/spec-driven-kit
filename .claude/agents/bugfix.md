@@ -47,7 +47,7 @@ Report:
 - **Fix**: file path and what changed
 - **Verification**: result of each command
 
-Do not commit; the user reviews the diff and commits.
+Do not commit or push unless the request explicitly asks for it; the user reviews the diff and commits.
 
 ## Rules
 

@@ -73,7 +73,7 @@ A test that never failed proves nothing about the change. For a slice that only 
 
 After PROVE, write `_specs/<FeatureName>/slice-<n>.md` from `.claude/templates/slice-recap-template.md`: what can be done now, how it was built (the architecture diagram with this slice's part marked), the proof, what to read in the diff and in which order, and the steps to try it. It fits on one screen. Then add one line to the spec's Status and stop.
 
-Claude never commits and never pushes. The user reads the recap, tries the slice, reviews the diff and commits the code together with the recap; that commit is the acceptance. The next slice starts only on a clean working tree. If the tree still holds the previous slice, ask; do not build on top of it.
+Claude commits or pushes only when the user explicitly asks for it in the conversation, never on its own initiative and never as part of finishing a slice. The user reads the recap, tries the slice, reviews the diff and commits the code together with the recap (or asks Claude to); that commit is the acceptance. A request to commit applies to that commit only; it is not permission for later ones. The next slice starts only on a clean working tree. If the tree still holds the previous slice, ask; do not build on top of it.
 
 ## Where Claude stops
 

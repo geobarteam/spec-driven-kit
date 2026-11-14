@@ -16,7 +16,7 @@ A feature name and, optionally, user stories or acceptance criteria. If `_specs/
 
 1. **Investigate**: use the `investigate` skill. It reads the code and what the request depends on, and writes the findings and the questions they raise into `_specs/<FeatureName>/spec.md`. No code.
 2. **Interview and specify**: use the `write-spec` skill. It interviews the user round by round from those questions, writes the rest of the spec with its two diagrams and its slices, and stops for approval. No code.
-3. **Build**: once the spec is approved, start a fresh session (`/clear` or a new conversation) and use the `build-slice` skill for the next slice. It writes the slice test first (an integration test, or a UI test for a stub slice), builds with a unit test before each piece of logic, proves the slice, writes the recap, and stops. It does not commit.
+3. **Build**: once the spec is approved, start a fresh session (`/clear` or a new conversation) and use the `build-slice` skill for the next slice. It writes the slice test first (an integration test, or a UI test for a stub slice), builds with a unit test before each piece of logic, proves the slice, writes the recap, and stops. It does not commit unless the user asks for it.
 4. **Approve and repeat**: the user reads the recap, tries the slice, reviews the diff and commits. Then the next slice is built, again in a fresh session.
 5. **Review**: after the last slice, the `spec-reviewer` agent compares the full diff with the spec and reports each acceptance criterion as met or not met. The user reviews that report, then pushes.
 
