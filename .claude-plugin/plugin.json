@@ -1,0 +1,11 @@
+{
+  "name": "spec-driven-kit",
+  "version": "2.0.0",
+  "description": "Spec-driven development for Claude Code. Install by copying .claude/ into a project and running /setup; this manifest exists so the eval suite in evals/ can run against the kit.",
+  "skills": ["./.claude/skills"],
+  "agents": [
+    "./.claude/agents/spec-critic.md",
+    "./.claude/agents/slice-verifier.md",
+    "./.claude/agents/spec-reviewer.md"
+  ]
+}

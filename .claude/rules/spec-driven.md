@@ -1,21 +1,24 @@
+<!-- spec-driven-kit 2.0.0 -->
 # Spec-driven development
 
-This file defines how work is done in this repository: when a spec is needed, how it is prepared, how a slice is built and proven, and where Claude stops for the user. It is the same in every project; the project's own values are in `CLAUDE.md` § Project settings.
+This file defines how work is done in this repository: when a spec is needed, what a spec and a slice are, and where Claude stops for the user. The procedures are in the skills and are not repeated here. The project's own values are in `CLAUDE.md` § Project settings.
 
 The spec is the only planning document. Plan mode and plan files are not used: the approach to a slice is worked out from the current code when the slice is built, and stated in the conversation.
 
+**Precedence.** In this repository this file outranks any plugin or user-level skill that prescribes another planning workflow (brainstorm-then-plan, plan files, building from a task list). Use such a skill only for what this workflow does not cover, such as debugging technique.
+
 ## The phases
 
-| Phase | What happens | Skill | Ends with |
+| Phase | What happens | Skill or agent | Ends with |
 |---|---|---|---|
-| 1. Investigate | Read the code, the reference feature and what the request depends on; record verified findings and the questions they raise | `investigate` | Findings and questions in the spec file |
+| 1. Investigate | Read the code and what the request depends on; record verified findings and questions | `investigate` | Findings and questions in the spec file |
 | 2. Interview | Ask the user, round by round, until the spec could be written without assumptions | `write-spec` | No open question that changes behavior |
-| 3. Specify | Write behavior, acceptance criteria, the two diagrams and the vertical slices | `write-spec` | The user approves the spec |
-| 4. Build | One slice, in a fresh session: the slice test first (integration test, or UI test for a stub slice), then a unit test before every piece of logic | `build-slice` | Verification Commands green |
-| 5. Approve | Write the slice recap and stop. The user reads it, tries the slice, reviews the diff and commits | `build-slice` | The user's commit |
-| 6. Review | After the last slice, a context-free reviewer checks every acceptance criterion against the full diff | `spec-reviewer` agent | The user pushes |
+| 3. Specify | Behavior, acceptance criteria, two diagrams, vertical slices; a context-free critic reads it before the user does | `write-spec`, `spec-critic` | The user approves the spec |
+| 4. Build | One slice in a fresh session: the slice test first, then a unit test before every piece of logic | `build-slice` | Verification green |
+| 5. Verify and approve | A context-free verifier tries to break the slice's checks; then the recap, and stop | `slice-verifier`, `build-slice` | The user's commit |
+| 6. Review | After the last slice, a context-free reviewer checks every acceptance criterion against the full diff | `spec-reviewer` | The user pushes |
 
-`new-feature` runs the phases in order.
+`new-feature` runs the phases in order. `amend-spec` changes an approved spec. `bugfix` handles small fixes.
 
 ## Spec Gate
 
@@ -27,64 +30,48 @@ Decide before the first change what the work needs.
 | Change in a risk area | Spec, approved by the user, before any code |
 | Work that will not fit in one session | Spec, approved by the user, before any code |
 | Contained change that fits in one session | No file. Say in the conversation what will be true afterwards and which test proves it, then build test first |
-| Bugfix in one or two files | No spec; regression test first (`bugfix` agent) |
+| Bugfix in one or two files | No spec; regression test first (`bugfix` skill) |
 | Config correction, simple refactor | No spec |
 
 ## The spec
 
 A spec lives in `_specs/<FeatureName>/spec.md` and follows `.claude/templates/spec-template.md`. It says what must be true when the work is done, how that is checked, and what it looks like.
 
-- **Holds**: status, goal, findings, constraints (⚠️ on risk areas), behavior, two diagrams, numbered acceptance criteria that each name their check, ordered slices, out of scope, open questions.
-- **Leaves out**: file lists, class and test method names, line numbers, code. Whoever builds the slice works those out from the current code, so they cannot go stale. Exception: a contract that is itself the requirement (a route, a DTO shape, a message name).
-- **Diagrams**: one for *what* happens (the flow the user or the calling system goes through) and one for *how* it is built (the components involved, which are new or changed, and which slice adds each part). Mermaid, at component level, never at file or class level.
-- **Stays true**: when a decision during the build changes behavior or architecture, edit the spec, its diagrams included, and add a Status line. The spec describes the system as it will be, not the history of how it got there.
+- **Leaves out** file lists, class and test method names, line numbers and code, so it cannot go stale. Exception: a contract that is itself the requirement (a route, a DTO shape, a message name).
+- **Stays true during the build.** When a decision changes behavior or architecture, the spec is changed first, through `amend-spec`, with the user's approval.
+- **Is history once shipped.** After the final review the spec is marked shipped. From then on the code is the truth; a later investigation verifies a shipped spec against the code before relying on it.
 
-## Vertical slices
+## Slices
 
-A slice is one new piece of functionality across every layer it needs, named after what the user or the system can do afterwards. Slice by behavior, never by layer: "create entity, add repository, build controller, create page" leaves nothing observable until the last step.
+A slice is one new piece of functionality across every layer it needs, named after what the user or the system can do afterwards. Slice by behavior, never by layer. No slice depends on a later one.
 
-Every slice names two checks:
+- Every slice names a **slice test**, written first (an integration test through the real entry point; for a stub slice a UI test of the page on its stubbed service), and a **human check**, or the reason there is none.
+- A UI behavior is cut into a **stub** slice (the page on fake data, for the user to try and judge) directly followed by its **wire** slice (the real backend from top to bottom; the stub is removed). Exception: a UI change with nothing for the user to judge (a column, a label, a field on an existing form) is one slice with an integration test, and the spec says so.
+- Every test that proves an acceptance criterion carries the criterion's id (`AC-3`) in its name or in a trait, tag or comment, so the check can be found without guessing.
 
-- **Slice test**: the automated test that is written first and decides whether the slice works. For a wire slice or any slice without UI it is an integration test: one scenario through the real entry point (HTTP call, page, command, message) down to real persistence. For a stub slice it is a UI test of the page on its stubbed service. `CLAUDE.md` § Project settings defines both levels. Work that no slice test can prove is not a slice: fold it into the slice whose behavior it supports.
-- **Human check**: the steps the user carries out to see the slice work. When a slice has nothing a human can observe, the spec says so and why; the slice test is then the only check. A stub slice always has one: being tried by the user is its purpose.
+## Proof
 
-A UI behavior is cut into two slices:
+- Every line of production code answers a failing test: the slice test for wiring between layers, a unit test for logic.
+- A test that never failed proves nothing. Ask of every check: would it fail if the behavior were broken?
+- The builder does not grade its own work. `slice-verifier` checks each slice, `spec-reviewer` the whole feature, and neither is given the builder's account.
 
-1. **Stub**: the page, form or component with its real interaction, on a stubbed service that returns fake data. It is a vertical slice of the UI: the user can open it, use it and judge it before any backend exists, and a change of mind costs little.
-2. **Wire**: the stub is replaced by real code from top to bottom (API, logic, persistence), proven by an integration test. The stub is removed.
+## Commit and push
 
-Finish the stub and the wire of one behavior before starting the next. A slice that needs two scenarios with different outcomes for the user is two slices. A slice too large to prove in one cycle is split into smaller behaviors, never into layers. No slice depends on a later one.
+Claude commits or pushes only when the user explicitly asks for it in the conversation. A request to commit applies to that commit only. The user's commit of a slice, together with its recap, is the acceptance; the next slice starts only on a clean working tree.
 
-In a project with no working code yet, slice 1 of the first spec is the walking skeleton: the thinnest path from the entry point to persistence, together with the test harness that proves it.
-
-## Building a slice
-
-Two loops, the outer one first.
-
-1. **Outer RED**: write the slice test from the slice's acceptance criteria and run it: the integration test, or for a stub slice the UI test. It must fail because the behavior is missing, not because the harness is broken.
-2. **Inner loop**, repeated until the slice test passes: write a unit test for the next piece of logic, see it fail, write the minimal code that passes it, refactor. Every line of production code answers a failing test: the slice test for wiring between layers, a unit test for logic (rules, branching, calculation, mapping, error handling, page state).
-3. **Outer GREEN**: the slice test passes as it was written. If it had to change, say why.
-4. **REFACTOR**: clean up and clear linter and analyzer warnings without weakening or disabling a rule.
-5. **PROVE**: run the Verification Commands; all green, zero warnings. Check each acceptance criterion of the slice the way the spec says.
-
-A test that never failed proves nothing about the change. For a slice that only adds tests to behavior that already exists, see each test fail by breaking that behavior on purpose (or asserting the opposite), then restore it. Ask of every check: would it fail if the behavior were broken?
-
-## Approving a slice
-
-After PROVE, write `_specs/<FeatureName>/slice-<n>.md` from `.claude/templates/slice-recap-template.md`: what can be done now, how it was built (the architecture diagram with this slice's part marked), the proof, what to read in the diff and in which order, and the steps to try it. It fits on one screen. Then add one line to the spec's Status and stop.
-
-Claude commits or pushes only when the user explicitly asks for it in the conversation, never on its own initiative and never as part of finishing a slice. The user reads the recap, tries the slice, reviews the diff and commits the code together with the recap (or asks Claude to); that commit is the acceptance. A request to commit applies to that commit only; it is not permission for later ones. The next slice starts only on a clean working tree. If the tree still holds the previous slice, ask; do not build on top of it.
+One exception, **batch mode**: when the spec's Status holds the line "batch mode on", written at the user's request, Claude commits each verified slice that is not marked ⚠️ on the feature branch and goes on to the next (see `build-slice`). Batch mode never pushes.
 
 ## Where Claude stops
 
 - after the investigation, when a finding makes the request impossible or changes its size;
 - after writing a spec, before any code;
 - before building a slice marked ⚠️: state the approach in the conversation and wait for the user's go;
-- after every slice, with the recap;
+- after every slice, with the recap (in batch mode: after the last slice, at a ⚠️ slice, or when the verifier reports a failure);
 - when the build shows the spec is wrong or incomplete in a way that changes behavior or architecture.
 
 ## Tooling
 
-- Skills: `new-feature`, `investigate`, `write-spec`, `build-slice`.
-- Agents: `bugfix` (one- or two-file fixes, regression test first), `spec-reviewer` (final check of the diff against the spec). For codebase search use the built-in Explore agent.
+- Skills: `new-feature`, `investigate`, `write-spec`, `build-slice`, `amend-spec`, `bugfix`.
+- Agents: `spec-critic` (the spec, before approval), `slice-verifier` (one slice, before its recap), `spec-reviewer` (the full diff, after the last slice). For codebase search use the built-in Explore agent.
+- Hooks (`.claude/hooks/`, configured in `.claude/spec-driven.json` when the kit was set up): no source edits on a protected branch, no slice recap while verification fails, no file-changing git commands inside the review agents.
 - Templates: `.claude/templates/spec-template.md`, `.claude/templates/slice-recap-template.md`.

@@ -39,6 +39,8 @@ flowchart LR
 | Unit tests | <n added, all seen failing first, all passing> |
 | Verification Commands | <each command: green, zero warnings> |
 | AC-<n> | <met: evidence> |
+| Verifier (`slice-verifier`) | <PASS, FAIL or INCOMPLETE; each check failed when the behavior was broken: yes, or which did not; what it could not run> |
+| Security review (⚠️ slices) | <no findings, or what remains for you to decide> |
 
 ## What to review
 

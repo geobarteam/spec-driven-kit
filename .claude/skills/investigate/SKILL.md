@@ -10,7 +10,10 @@ Find out what is true today, before anyone decides what to build. The result is 
 
 ## Before reading
 
-Look for an existing spec with the same subject under `_specs/`. If one exists, read it and its Status, and ask whether the request updates it or is new work. Do not overwrite work in progress.
+Look for an existing spec with the same subject under `_specs/`. If one exists, read it and its Status.
+
+- **In progress** (not shipped): ask whether the request updates it or is new work. Do not overwrite work in progress; a change to an approved spec goes through the `amend-spec` skill.
+- **Shipped**: it is history, and the code may have moved since. Use it to find your way, verify against the code whatever you take from it, and start a new spec for the new work.
 
 ## What to read
 
