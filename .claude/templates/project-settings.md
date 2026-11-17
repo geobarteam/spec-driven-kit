@@ -15,7 +15,7 @@ In this repository that workflow leads. Do not use <the competing skills, by nam
 - **Risk areas** (a human go before code): <auth, personal data, database schema, shared contracts, public API routes and DTOs, file storage>
 - **Specs folder**: `_specs/`
 - **Protected branches** (never build on them): `<main>`
-- **Feature branch name**: `<feature/<short-name>>` from `<base branch>`
+- **Spec branch**: `<feature/<short-name>>` from `<base branch>`; one per spec, created by Claude when the spec starts, merged through a pull request
 - **Commit format**: `<type>(<scope>): <desc>`
 
 ### Test levels

@@ -1,4 +1,4 @@
-<!-- spec-driven-kit 2.0.0 -->
+<!-- spec-driven-kit 2.1.0 -->
 # Spec-driven development
 
 This file defines how work is done in this repository: when a spec is needed, what a spec and a slice are, and where Claude stops for the user. The procedures are in the skills and are not repeated here. The project's own values are in `CLAUDE.md` § Project settings.
@@ -41,6 +41,16 @@ A spec lives in `_specs/<FeatureName>/spec.md` and follows `.claude/templates/sp
 - **Stays true during the build.** When a decision changes behavior or architecture, the spec is changed first, through `amend-spec`, with the user's approval.
 - **Is history once shipped.** After the final review the spec is marked shipped. From then on the code is the truth; a later investigation verifies a shipped spec against the code before relying on it.
 
+## One branch per spec
+
+Every spec has a branch of its own, so its work can be followed while it is in progress and lands as one pull request.
+
+- **Claude creates it** when a new spec starts, before the spec file is written: named as `CLAUDE.md` § Project settings says (Spec branch), from the up-to-date base branch (`git fetch`, then `git switch -c <branch> origin/<base>`; from the local base when the repository has no remote). The first line of the spec's Status records the branch and its base.
+- **Creating, switching and fetching need no approval; committing does** (see Commit and push). When the working tree holds changes as the branch is created, ask first: they would move to the new branch.
+- **Everything of the spec lives there**: the spec, its amendments, the slices and their recaps. No other spec's work goes on it, and its slices are never built on another branch. A hook refuses spec files on a protected branch.
+- **The approved spec is the first commit** on the branch (by the user, or by Claude when asked), so a draft pull request can be opened while the slices are built. After the final review the user pushes and completes the pull request.
+- A fix without a spec (`bugfix`) also gets a branch of its own, created the same way.
+
 ## Slices
 
 A slice is one new piece of functionality across every layer it needs, named after what the user or the system can do afterwards. Slice by behavior, never by layer. No slice depends on a later one.
@@ -57,9 +67,9 @@ A slice is one new piece of functionality across every layer it needs, named aft
 
 ## Commit and push
 
-Claude commits or pushes only when the user explicitly asks for it in the conversation. A request to commit applies to that commit only. The user's commit of a slice, together with its recap, is the acceptance; the next slice starts only on a clean working tree.
+Claude commits or pushes only when the user explicitly asks for it in the conversation. A request to commit applies to that commit only. The user's commit of a slice, together with its recap, is the acceptance; the next slice starts only on a clean working tree. Creating or switching to a spec's branch and `git fetch` are not commits: Claude does them without asking. Merge, rebase, reset and deleting a branch only when the user asks.
 
-One exception, **batch mode**: when the spec's Status holds the line "batch mode on", written at the user's request, Claude commits each verified slice that is not marked ⚠️ on the feature branch and goes on to the next (see `build-slice`). Batch mode never pushes.
+One exception, **batch mode**: when the spec's Status holds the line "batch mode on", written at the user's request, Claude commits each verified slice that is not marked ⚠️ on the spec's branch and goes on to the next (see `build-slice`). Batch mode never pushes.
 
 ## Where Claude stops
 
@@ -73,5 +83,5 @@ One exception, **batch mode**: when the spec's Status holds the line "batch mode
 
 - Skills: `new-feature`, `investigate`, `write-spec`, `build-slice`, `amend-spec`, `bugfix`.
 - Agents: `spec-critic` (the spec, before approval), `slice-verifier` (one slice, before its recap), `spec-reviewer` (the full diff, after the last slice). For codebase search use the built-in Explore agent.
-- Hooks (`.claude/hooks/`, configured in `.claude/spec-driven.json` when the kit was set up): no source edits on a protected branch, no slice recap while verification fails, no file-changing git commands inside the review agents.
+- Hooks (`.claude/hooks/`, configured in `.claude/spec-driven.json` when the kit was set up): no source edits and no spec files on a protected branch, no slice recap while verification fails, no file-changing git commands inside the review agents.
 - Templates: `.claude/templates/spec-template.md`, `.claude/templates/slice-recap-template.md`.

@@ -15,6 +15,11 @@ Look for an existing spec with the same subject under `_specs/`. If one exists, 
 - **In progress** (not shipped): ask whether the request updates it or is new work. Do not overwrite work in progress; a change to an approved spec goes through the `amend-spec` skill.
 - **Shipped**: it is history, and the code may have moved since. Use it to find your way, verify against the code whatever you take from it, and start a new spec for the new work.
 
+## The spec's branch
+
+- **A new spec**: create its branch now, before writing anything, as `.claude/rules/spec-driven.md` § One branch per spec says: the name from `CLAUDE.md` § Project settings (Spec branch), from the up-to-date base. Ask first only when the working tree holds changes.
+- **A spec in progress**: switch to the branch its Status names, when the tree is clean; ask otherwise.
+
 ## What to read
 
 1. **The reference feature** (`CLAUDE.md` § Project settings) across the layers the request touches. Use another feature when the user names one or when one is clearly closer, and say which and why. For technical work the reference may be a library's source or documentation.
@@ -30,7 +35,7 @@ In a project with no code yet, the investigation covers the requirements the use
 
 Create `_specs/<FeatureName>/spec.md` from `.claude/templates/spec-template.md` and fill in only:
 
-- **Status**: "<date>: investigation done. Spec not written."
+- **Status**: "<date>: branch `<branch>` from `<base>`." and "<date>: investigation done. Spec not written."
 - **Goal**: as far as the request states it.
 - **Findings**: what exists today, what the request depends on, the risk areas touched, and the options that fit the code. Each finding says how it is known (the file read, the command run). Something you could not verify is not a finding; it is a question.
 - **Open questions**: everything the request and the code do not answer, ordered so that the questions whose answer changes the size or shape of the work come first.
@@ -39,6 +44,6 @@ Leave the other sections as they are in the template.
 
 ## Report
 
-Tell the user, in a few lines: what exists today that the feature builds on, what turned out to be different from what the request assumes, the options with the one you recommend, and how many questions remain for the interview.
+Tell the user, in a few lines: the branch the spec lives on, what exists today that the feature builds on, what turned out to be different from what the request assumes, the options with the one you recommend, and how many questions remain for the interview.
 
 Stop there when a finding makes the request impossible as stated or changes its size by much; the user decides how to go on. Otherwise continue with the `write-spec` skill in the same conversation.

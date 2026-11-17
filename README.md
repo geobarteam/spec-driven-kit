@@ -121,7 +121,7 @@ Written in the project by the setup: `CLAUDE.md` § Project settings, `.claude/s
 
 Enforced by a hook, whatever Claude decides:
 
-- no edit outside specs and `.claude/` on a protected branch;
+- no edit outside `.claude/` and `CLAUDE.md` on a protected branch, and no spec file there: every spec is written on a branch of its own, which Claude creates when the spec starts;
 - no slice recap while the verification commands fail (exit code, or the warning pattern you configure);
 - no git command that changes files, history or branches inside the three review agents;
 - commit and push ask for your confirmation.
@@ -136,6 +136,7 @@ Instructions only, checked afterwards by the agents and by you: the spec is appr
 - **UI first, on a stub.** A page on fake data is a vertical slice of the UI: the user can use it and judge it. Changing a page before its backend exists costs little. Where there is nothing to judge, the stub is skipped.
 - **A check must be able to fail.** In the trial run, a reviewer without context found a test that passed on any 401 and proved nothing. Hence the verifier: it breaks the behavior on purpose and reports every check that stays green.
 - **The builder does not grade its own work.** The critic, the verifier and the reviewer get the spec and the code, never the conversation in which they were made.
+- **One branch per spec.** The spec, its slices and recaps share one branch, created by Claude when the spec starts, with the approved spec as its first commit. A draft pull request then shows the work in progress, and the review diff is exactly that spec's work. Claude may create and switch branches; it still commits only on request.
 - **Rules without exceptions are hooks.** An instruction can be skipped under pressure; a hook cannot.
 - **Diagrams are for the person who approves.** A picture of what happens and of how it is built lets the user judge in a minute what would take much longer from prose and a diff.
 - **The commit is the acceptance.** Claude does not commit on its own initiative. A clean working tree tells the next session that the previous slice was accepted. Batch mode is the one exception, and the user switches it on per spec.

@@ -3,7 +3,8 @@
 // tool call and shows the reason to Claude. Does nothing until .claude/spec-driven.json exists.
 //
 // Guards:
-//   1. No source edits on a protected branch (specs and Claude's own files are allowed).
+//   1. No source edits on a protected branch (Claude's own files are allowed), and no spec files
+//      there either: every spec is written on a branch of its own.
 //   2. No slice recap (_specs/<Feature>/slice-<n>.md) while the Verification Commands fail.
 //   3. No git command that changes files, history or branches inside the review agents.
 
@@ -71,11 +72,15 @@ function main() {
 
   const allowed = config.allowOnProtected ?? [`${specsDir}/`, '.claude/', 'CLAUDE.md'];
   const branch = currentBranch(root);
-  if (branch && (config.protectedBranches ?? []).includes(branch) && !allowedOnProtected(rel, allowed)) {
-    block(
-      `"${branch}" is a protected branch and ${rel} is not a spec. ` +
-        'Ask the user to create or name the feature branch, then continue there.',
-    );
+  const onProtected = branch && (config.protectedBranches ?? []).includes(branch);
+  const howToBranch =
+    'Switch to the branch named in the spec\'s Status, or create one as .claude/rules/spec-driven.md ' +
+    '§ One branch per spec says (git fetch, then git switch -c <branch> origin/<base>), then continue there.';
+  if (onProtected && new RegExp(`^${specsDir}/[^/]+/`).test(rel)) {
+    block(`"${branch}" is a protected branch, and every spec is written on a branch of its own. ${howToBranch}`);
+  }
+  if (onProtected && !allowedOnProtected(rel, allowed)) {
+    block(`"${branch}" is a protected branch and ${rel} is not one of Claude's own files. ${howToBranch}`);
   }
 
   if (new RegExp(`^${specsDir}/[^/]+/slice-\\d+\\.md$`).test(rel)) {

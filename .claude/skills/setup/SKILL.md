@@ -81,7 +81,7 @@ Ask in one or two rounds, offering what you found as the default answer:
 
 - **Reference feature**: the existing feature that new features should mirror. In a project without one: "none yet; the first feature built becomes the reference".
 - **Risk areas**: where the user wants to give a go before code is written. Propose a short list from what you saw (authentication, personal data, database schema, public contracts). Warn that a long list marks almost every slice ⚠️ and doubles the stops.
-- **Branches**: which are protected, how a feature branch is named and from which base.
+- **Branches**: which are protected, and how a spec branch is named and from which base. Every spec gets a branch of its own, which Claude creates when the spec starts; propose the naming the project's CI triggers and pull request policies expect.
 - **Commit format**, when the history does not show one.
 - **Integration test**: what that level goes through in this project, so that "the slice's integration test" has one meaning. When no such level exists yet, agree what it will be.
 - **UI test**, when the project has a user interface: how a page is tested on a stubbed service, and how the stub is switched on so the user can open the page without a backend.

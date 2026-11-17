@@ -65,4 +65,4 @@ Then summarise in a few lines: the goal, the slices with what the user will see 
 
 Mention batch mode once, as an option and not as a recommendation: slices not marked ⚠️ are then built, verified and committed by Claude back to back, and the user reviews them together at the end. The default is one slice, one review, one commit by the user.
 
-When the user approves, add "<date>: approved by the user" to Status, and "<date>: batch mode on" if they asked for it. The build starts in a fresh session with the `build-slice` skill.
+When the user approves, add "<date>: approved by the user" to Status, and "<date>: batch mode on" if they asked for it. Then offer to commit the approved spec as the first commit on the spec's branch, so a draft pull request can be opened; commit only when the user says so. The build starts in a fresh session with the `build-slice` skill.

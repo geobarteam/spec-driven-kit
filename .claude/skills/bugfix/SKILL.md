@@ -10,6 +10,7 @@ Every bugfix gets a regression test first, no exceptions. This skill runs in the
 
 ## 1. Investigate
 
+- On a protected branch, create a branch for the fix first (`.claude/rules/spec-driven.md` § One branch per spec), named like a spec branch; ask first only when the working tree holds changes.
 - Reproduce the bug when it can be reproduced: run the failing scenario and keep the output.
 - Read the reported code and what surrounds it, and identify the root cause, not the place where the symptom shows. When the expected behavior is unclear, ask the user; do not guess what "correct" means.
 - Confirm that the fix changes at most two production files and touches no risk area (`CLAUDE.md` § Project settings). If it is larger or touches one, stop: the work needs a spec first (`investigate`, then `write-spec`).

@@ -10,8 +10,10 @@ Remove the sections the feature does not need. Diagrams and Slices always stay.
 
 ## Status
 
+- <date>: branch `<spec branch>` from `<base>`.
 - <date>: investigation done. Spec not written.
 <!--
+The first line names the spec's own branch; all work of this spec is done and committed there.
 One line per event, oldest first: spec written, approved by the user, batch mode on, slice N built
 (date, proof result, decisions), amended (what and why), amendment approved, shipped.
 The state of each slice is in the Slices table. A shipped spec is history: the code is the truth.

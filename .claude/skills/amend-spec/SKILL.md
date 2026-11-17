@@ -6,7 +6,7 @@ argument-hint: "The spec and what has to change, e.g. 'Subscriptions - a subscri
 
 # Amend Spec
 
-Change an approved spec without letting it drift from the code or from itself. The spec describes the system as it will be, not the history of how it got there (`.claude/rules/spec-driven.md`). Change no file other than the spec.
+Change an approved spec without letting it drift from the code or from itself. The spec describes the system as it will be, not the history of how it got there (`.claude/rules/spec-driven.md`). Change no file other than the spec, and change it on the spec's branch, named in its Status.
 
 ## When this applies
 
