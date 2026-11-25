@@ -8,6 +8,10 @@ argument-hint: "The bug: error message, wrong behavior, failing scenario, or a f
 
 Every bugfix gets a regression test first, no exceptions. This skill runs in the main conversation, so the user's description of the bug stays available and you can ask about it. The commands are in `CLAUDE.md` § Project settings.
 
+## Guidelines
+
+A guideline is a file under the project's `.claude/rules/` whose first line after the frontmatter is `<!-- guideline: <role> -->`, the role being testing, architecture or coding; find them by that line, not by file name. In step 1, read the **architecture** guideline to name the layer of the root cause: a fix that would cross one of its dependency rules is larger than a bugfix and needs a spec. In steps 2 and 3, follow the **testing** guidelines: their rule T-1 for the regression test, T-3 and T-9 for the fix (no weakened assertion, no skipped test), and T-11 for what the report says. When no file carries a role, skip what this paragraph says for it without remark.
+
 ## 1. Investigate
 
 - On a protected branch, create a branch for the fix first (`.claude/rules/spec-driven.md` § One branch per spec), named like a spec branch; ask first only when the working tree holds changes.

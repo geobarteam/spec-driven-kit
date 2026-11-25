@@ -31,6 +31,10 @@ In a large codebase, use the Explore agent to locate code, then read the files t
 
 In a project with no code yet, the investigation covers the requirements the user gave, the chosen stack and its documentation, and any reference implementation elsewhere; say plainly that nothing exists to read.
 
+## Guidelines
+
+A guideline is a file under the project's `.claude/rules/` whose first line after the frontmatter is `<!-- guideline: <role> -->`, the role being testing, architecture or coding; find them by that line, not by file name. Read the **architecture** guidelines at "What to read", before the reference feature: name in Findings the layers the request touches and the dependency rules that bind them, in the guideline's terms; a request that needs a dependency the guideline forbids, or a layer it does not know, is a finding that changes the size of the work, so stop there as "Report" says. Read the **testing** guidelines at step 2: state at which level the existing tests of that code run, in the terms of their table of test levels, so the slice tests can be placed. When no file carries a role, skip what this paragraph says for it without remark.
+
 ## What to write
 
 Create `_specs/<FeatureName>/spec.md` from `.claude/templates/spec-template.md` and fill in only:

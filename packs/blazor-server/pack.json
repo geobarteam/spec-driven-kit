@@ -1,0 +1,12 @@
+{
+  "name": "blazor-server",
+  "description": "The architecture guideline of a Blazor Server solution on the organisation's 3-tier layout (WFE, BFF, Worker): what the Blazor Server hosting model adds to or changes in the shared architecture rules of dotnet-shared, as a rule.",
+  "recommend": "when a project file references a Blazor Server package of the solution's core configuration library or a Host/Web project exists",
+  "needs": ["dotnet-shared"],
+  "excludes": ["blazor-wasm"],
+  "agents": [],
+  "skills": [],
+  "rules": [
+    "architecture-blazor-server"
+  ]
+}

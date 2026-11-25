@@ -1,0 +1,16 @@
+{
+  "name": "dotnet-shared",
+  "description": "What every C# repository shares: the coding guideline (selected from the organisation's Sonar C# profile), the testing guidelines (the organisation's test conventions with the test levels per project type, and the rules for an AI agent that writes the tests) and the architecture rules both Blazor hosting models share, as rules; the slice's mutation check (Stryker.NET), as a script in the project's scripts/ folder, with dotnet-stryker pinned as a local tool.",
+  "recommend": "when the repository has a .csproj",
+  "needs": ["operations"],
+  "agents": [],
+  "skills": [],
+  "rules": [
+    "architecture-shared",
+    "coding",
+    "tests",
+    "testing-for-agents"
+  ],
+  "scripts": ["mutation-check.mjs"],
+  "dotnetTools": { "dotnet-stryker": "5.1.0" }
+}

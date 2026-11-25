@@ -24,7 +24,7 @@ Read `.claude/rules/spec-driven.md` in the kit folder first, so you know what yo
 
 - It exists and is not the kit folder. If Claude Code has no access to it, ask the user to grant it (`/add-dir <path>`).
 - Git state: whether it is a repository, the current branch, whether the working tree is clean. Advise a clean tree on a branch of its own, so the install is one diff the user can review and revert. Go on when the user prefers otherwise.
-- `.claude/spec-driven.install.json` exists: this is an **update**. Read the kit version, level and options recorded there, tell the user what the new version changes for them, and keep the project's existing answers in steps 3 to 5.
+- `.claude/spec-driven.install.json` exists: this is an **update**. Read the kit version, level, options and packs recorded there, tell the user what the new version changes for them, and keep the project's existing answers in steps 3 to 5. Update only with the same or a newer kit: an older kit does not know the packs and would plan their files as `remove`. When a project test rule asks for break-on-purpose checks (for example T-4 of `testing-for-agents`), tell the user to align it with the kit's no-break rule (the build never modifies, comments out or breaks production code to see a test fail) and name the rule and its number; the installer does not edit project-owned rules, so the user changes it or keeps it knowingly.
 
 ## 2. Survey the project
 
@@ -57,7 +57,7 @@ Then run the installer's plan, which writes nothing:
 node tools/install.mjs plan <project>
 ```
 
-It reports each kit file as `add`, `same`, `update`, `modified` (a kit file the project changed) or `collision` (the project's own file at the same path), and what it would add to `.claude/settings.json`.
+It reports each kit file as `add`, `same`, `update`, `modified` (a kit file the project changed) or `collision` (the project's own file at the same path), and what it would add to `.claude/settings.json`. On an update it includes the packs recorded for the project.
 
 ## 4. Agree with the user what the kit takes over
 
@@ -65,9 +65,10 @@ Present what you found, then ask, with your recommendation first:
 
 - **Level.** How much of the kit to install:
   1. the review agents only: nothing changes until one is asked for;
-  2. plus the guards: hooks and the confirmation on commit and push, next to the project's own hooks;
+  2. plus the guards: hooks next to the project's own hooks, among them the guard's confirmation on commit and push in attended sessions (an unattended job, `ZYGGY_JOB` set, is not asked; protected branches stay refused);
   3. plus the workflow: skills, templates and the rules file. This changes Claude's default behavior in the project: the Spec Gate applies to every request, and plan mode and plan files are no longer used.
   Recommend 3 for a project without a planning workflow of its own, and 1 or 2 as a first step for a project that has one.
+- **Packs.** The kit's packs are the folders under `packs/` in the kit folder, one `pack.json` each with the pack's description, when to recommend it, the packs it needs, and the agents, skills and rules it holds. They are optional, belong to no level, and are not loaded in this session: read `pack.json`. Show every pack with one line, recommend it when the project matches its `recommend` line (for `operations`: the repository names a SonarQube server, in a `sonar.host.url` or a Sonar step of its pipeline, or follows a GitFlow-style branching model; for `dotnet-shared`: any `.csproj` in the repository; for `dotnet-library`: a `.csproj` with `GeneratePackageOnBuild` or `IsPackable`; for `blazor-server`: a `Host/Web` project, or a project file that references a Blazor Server package of the solution's core configuration library; for `blazor-wasm`: a `Host/Wasm` or a `Host/Cfe` project), and ask which to install. A pack that `needs` another is only installed with it (`dotnet-library` needs `operations` and `dotnet-shared`; `dotnet-shared` needs `operations`; `blazor-server` needs `dotnet-shared`; `blazor-wasm` needs `dotnet-shared`): say so when recommending it. `blazor-server` and `blazor-wasm` exclude each other, because one solution has one hosting model: recommend at most one, and the installer refuses a list with both. On an update, the recorded packs stay unless the user changes the list; when the project has `dotnet-library` without `dotnet-shared`, propose adding `dotnet-shared`, because the installer refuses the list without it. The `tests` rule moved from `dotnet-library` to `dotnet-shared` and keeps its path: on such an update it shows as `update`, or as `modified, skipped` when the project edited it; then tell the user the kit's version has new sections. Core skills the project edited show as `modified, skipped`: name them, so the user can merge the new "Guidelines" paragraph by hand. Then run the plan again with the choice, `node tools/install.mjs plan <project> --packs <name>[,<name>]...` (or `--packs none`), and go through it: a project that already has its own file at a pack path, such as a synced Copilot copy of an agent or a hand-written one, sees `collision` and decides per file in the next point. A project that keeps hand-converted rule copies outside `.claude/rules/` (for example under `.claude/instructions/`) gets the pack's rules next to them: list the duplicates for the user, by name, and remove nothing. The same holds for synced Copilot rule copies under `.claude/rules/` with other names than the guidelines (for example `application-layer`, `blazor-presentation`, `cfe-controller`, `refit-client`, `logging`): they are the sources of the architecture guideline, so list them for the user as overlapping, by name, and remove nothing.
 - **Each concern, one owner.** For every concern of step 3 where the project has something: the existing piece stays, the kit takes over, or the kit plugs into it. Planning cannot be shared: two planning workflows in one session make Claude unpredictable. Verification is best plugged in: the project's own command becomes the kit's verification command.
 - **Manual skills** (level 3): whether `new-feature` and `bugfix` may start on their own when a request matches, or run only when typed (`--manual-skills`). Recommend manual while the kit does not own planning for the whole project.
 - **Each skipped file.** For every `collision` and `modified` row: keep the project's file (default), or replace it (`--overwrite <path>`). When the project keeps its own file where the kit expects one, say what that means, for example that the kit's `bugfix` skill is absent and the project's is used.
@@ -87,22 +88,31 @@ Ask in one or two rounds, offering what you found as the default answer:
 - **UI test**, when the project has a user interface: how a page is tested on a stubbed service, and how the stub is switched on so the user can open the page without a backend.
 - **Human check**: how the user wants to try a slice (run command, address, test account or seed data), and which browser tool Claude may use to try it first.
 - **Criterion ids on tests**: how a test carries `AC-<n>`. Propose the mechanism the test framework already has (a trait or category, a tag, a marker), and the test name where it has none.
+- **Pack values**, one per line of the template's `### Pack values` marked with a chosen pack: the pack's agents, skills and rules read them from `CLAUDE.md` by the line's label. Propose what the project shows, and never a value from `.copilotrc.json`:
+  - `operations`, **Sonar server URL**: the SonarQube server the project is analysed on; propose the `sonar.host.url` found in the repository's pipeline or scanner files, else ask.
+  - `operations`, **Sonar project key**: the project's key on the Sonar server; propose `<owner or project>_<repository name>` from the git remote (`git remote get-url origin`), or the `sonar.projectKey` the repository already names.
+  - `dotnet-shared`, **Solution name**: the solution's name without extension; propose it from the solution file (`**/*.sln`).
+  - `dotnet-shared`, **Namespace root**: the root namespace of the solution; propose it from the main project (`RootNamespace` in the `.csproj`, or the project file's name).
+  - `dotnet-shared`, **Unit-test command**: the command that runs the unit tests, and how to filter it to one test; propose the test command you found in the survey and ran (at level 2 and up the one in the Verification Commands), and the filtered form you ran.
+  - `dotnet-shared`, **Test projects**: every test project's `.csproj`, in backticks with forward slashes; propose the projects under `src/Test/` (or whose name ends in `Tests`). **Mutation threshold**: propose `80`.
+
+  On an update, keep the lines already in `CLAUDE.md` and ask only the missing ones of the installed packs: a value already written is never asked twice.
 
 ## 6. Install
 
 Run the installer with what was agreed:
 
 ```
-node tools/install.mjs apply <project> --level <n> [--manual-skills] [--overwrite <path>]...
+node tools/install.mjs apply <project> --level <n> [--manual-skills] [--packs <name>[,<name>]...|none] [--overwrite <path>]...
 ```
 
-It copies the kit files of that level, skips the project's own files, merges the guard and the commit and push entries into `.claude/settings.json` (level 2 and up) without removing anything, and records the result in `.claude/spec-driven.install.json`. Show the user its output.
+It copies the kit files of that level and the files of the chosen packs, skips the project's own files, merges the guard into `.claude/settings.json` (level 2 and up) next to the project's own hooks and rules, and records the result, packs included, in `.claude/spec-driven.install.json`. On an update from a kit before 2.4.0 it also takes away the eight `permissions.ask` entries for commit and push that kit added: the guard asks now, and a static rule cannot be answered in an unattended job. Show the user its output: it names the packs next to the level and says what it removed.
 
-When it reports that `permissions.deny` already blocks commit or push: that blocks the commands even when the user asks for them. Show the user the entries and move them to `permissions.ask` only on their say.
+When it reports that `permissions.deny` already blocks commit or push: that blocks the commands even when the user asks for them, and the guard cannot ask for a denied command. Show the user the entries and remove them only on their say; the guard then asks in attended sessions.
 
 ## 7. Establish the Verification Commands
 
-Run, in the project folder, each command you found: build, unit tests, UI tests, integration tests, the format or lint check in its non-modifying form, and one filtered test run. Prefer the project's own command that runs everything, when it has one.
+Run, in the project folder, each command you found: build, unit tests, UI tests, integration tests, the format or lint check in its non-modifying form, and one filtered test run. Prefer the project's own command that runs everything, when it has one. Write every command, here and in `CLAUDE.md`, with forward slashes (`src/Test/Unit/X.Tests/bin/Debug/net8.0/X.Tests.exe`, `dotnet test src/Test/Unit/X.Tests/X.Tests.csproj`): Git Bash, PowerShell and the unattended jobs all run that form, and a backslash path breaks in Git Bash.
 
 - A command that fails, or passes with warnings, is reported to the user with its output. Do not repair the project as part of the setup unless the user asks.
 - A level that does not exist yet is written down as "not established yet". Do not invent a command you have not run.
@@ -112,12 +122,15 @@ Copy the project's `.claude/templates/spec-driven.json` to `.claude/spec-driven.
 - `specsDir`, `protectedBranches`;
 - `allowOnProtected`: what may be edited on a protected branch. Keep the defaults (specs, `.claude/`, `CLAUDE.md`); add a path only when the user asks for it;
 - `verify.commands`: the commands that work, in the order build, unit, UI, integration, lint;
+- `verify.integration`: which of `verify.commands` is the integration command and how to filter it to named tests, so the slice gate (`verify.mjs --slice <test>...`) runs only the integration tests written in the slice, while the feature gate (no argument) runs them all: `command` (that entry, verbatim), `filter` (appended to it, `{tests}` for the joined names), `test` (one name, `{name}`) and `separator`. For dotnet on test names: `"filter": "--filter \"{tests}\""`, `"test": "FullyQualifiedName~{name}"`, `"separator": "|"`; on a trait, `"test": "Category={name}"`. Run the filtered form once with a real test name. Leave it `null` when there is no integration level yet: the slice gate then runs every command;
 - `verify.shell`: `null` runs the commands in the system's default shell (`cmd.exe` on Windows, `sh` elsewhere). Set `"pwsh"`, `"powershell"` or `"bash"` when the commands need that shell;
 - `verify.failPattern`: a regular expression that makes a passing command fail when its output matches, for tools that report warnings with exit code 0 (for example `warning [A-Z]+[0-9]+`). `null` when the build already fails on warnings.
 
 Then run `node <project>/.claude/hooks/verify.mjs`. It must be green, with every command passing through the runner and not only when typed by hand. If it is not, fix the configuration, not the project.
 
-Add `.claude/spec-driven.state.json` to the project's `.gitignore`: the runner keeps there which state of the tree it last saw green.
+Add `.claude/spec-driven.state.json` and `artifacts/` to the project's `.gitignore`: the runner keeps in the first which state of the tree it last saw green, and the review agents write their reports under the second, to be read once by the session that started them, as the mutation check writes its full reports under `artifacts/mutation/`. A feature's `_specs/<FeatureName>/mutation-<n>.md` is not ignored: it is committed with each slice.
+
+With the dotnet-shared pack, check that the mutation check can run: `dotnet tool restore` in the project folder must restore `dotnet-stryker` (the installer pins 5.1.0 in `.config/dotnet-tools.json`); when it cannot, the package feed does not carry it: tell the user (README, "The mutation check"), and do not remove the tool.
 
 ## 8. Write the project settings
 
@@ -131,6 +144,10 @@ Write the outcome of step 4 into that section, in the place the template marks:
 - the kit owns planning for the whole project: the line that this workflow leads, naming the competing skills;
 - the kit owns part of it: the scope, for example "The spec-driven workflow applies to features started with `/new-feature`; everything else follows the workflow above." The project's own `CLAUDE.md` is what decides between the two, so the line has to be there.
 
+Under `### Pack values`, write only the lines of the installed packs, with the values of step 5; remove the other lines, and without a pack remove the heading. On an update, keep the existing lines. The heading and the labels are the contract the pack items read by: do not rename them.
+
+Write the **Guidelines** line when an installed pack holds guidelines (a rule whose first line is `<!-- guideline: <role> -->`): the roles it installs, for example "testing". Without such a pack, remove the line. The skills find the guideline files by that first line, not by this line.
+
 No placeholder in angle brackets may remain in the section.
 
 At level 3, create the specs folder (`_specs/`, with a `.gitkeep` when it would otherwise be empty). When the project already has specs or plans in another form, list them for the user and leave them where they are.
@@ -138,10 +155,12 @@ At level 3, create the specs folder (`_specs/`, with a `.gitkeep` when it would 
 ## 9. Check the setup
 
 - `node tools/install.mjs plan <project>` reports no `add` or `update` row for the chosen level.
-- `CLAUDE.md` § Project settings has a value, or an explicit "not established yet", on every line.
+- `CLAUDE.md` § Project settings has a value, or an explicit "not established yet", on every line, and `### Pack values` holds exactly the lines of the installed packs (no heading without a pack).
 - `node <project>/.claude/hooks/verify.mjs` was green in this session (level 2 and up).
-- The guard answers (level 2 and up). With the project on a protected branch, this prints a refusal and exits with code 2:
+- The guard answers (level 2 and up). With the project on a protected branch, each of these prints a refusal and exits with code 2:
   `echo '{"tool_name":"Edit","tool_input":{"file_path":"src/x"}}' | node <project>/.claude/hooks/guard.mjs`
+  `echo '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' | node <project>/.claude/hooks/guard.mjs`
+  On a feature branch the second prints a JSON decision `ask` and exits with code 0; with the environment variable `ZYGGY_JOB` set it prints nothing.
 - The project's own hooks and permission entries are still in `.claude/settings.json`.
 - Mermaid diagrams can be read where the user reviews specs: the editor's Markdown preview or the repository host. If not, say so.
 
@@ -149,10 +168,10 @@ At level 3, create the specs folder (`_specs/`, with a `.gitkeep` when it would 
 
 Tell the user:
 
-- what was installed at which level, what was skipped and why, and what you wrote yourself (`CLAUDE.md`, `.claude/spec-driven.json`, `.gitignore`);
+- what was installed at which level, which packs, what was skipped and why, and what you wrote yourself (`CLAUDE.md`, `.claude/spec-driven.json`, `.gitignore`);
 - who owns each concern now;
 - the Verification Commands and their result today, and what is not established yet. When there is no integration test level or no working code, slice 1 of the first spec is the walking skeleton;
 - anything in the existing instructions that awaits their decision;
 - how to review it: the diff in the project folder. Nothing was committed;
-- how to undo it: `node tools/install.mjs remove <project>` from this folder removes the kit's files and settings entries, and leaves `CLAUDE.md`, `.claude/spec-driven.json` and the specs folder for the user to delete;
+- how to undo it: `node tools/install.mjs remove <project>` from this folder removes the kit's files, pack files included, and its settings entries, and leaves `CLAUDE.md`, `.claude/spec-driven.json`, `.gitignore` and the specs folder for the user to delete; `apply <project> --packs none` takes only the packs away;
 - the next step: start Claude Code in the project folder, where the guards load with the new session, and run `/new-feature <name and a sentence of context>` on one feature first. Advise making the approved spec the first commit on the feature branch.

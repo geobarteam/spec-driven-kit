@@ -1,0 +1,8 @@
+# The review agents' reports (spec-critic, spec-reviewer): read once, then history.
+artifacts/
+# What the verification runner last saw green.
+.claude/spec-driven.state.json
+node_modules/
+# Scratch folders of maintenance jobs.
+.tmp-source/
+.tmp-tools/

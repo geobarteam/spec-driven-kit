@@ -1,0 +1,39 @@
+{
+  "kitVersion": "2.2.0",
+  "level": 3,
+  "manualSkills": false,
+  "packs": [
+    "operations"
+  ],
+  "files": {
+    ".claude/agents/slice-verifier.md": "3f6396f15a33fcf9b0e827e876c23aa1d0ce2d037a7b22cecb21492300df5e13",
+    ".claude/agents/spec-critic.md": "c8198c763aecc23344d06a973966be58324081cd7989a4a8e58a7516911b5d27",
+    ".claude/agents/spec-reviewer.md": "635f26bcd67ba20b8fd786c3706e530ae70d7e70778010ea2dc11eff1290f0d0",
+    ".claude/hooks/guard.mjs": "3ee9e41eeed63fad1112bb4f0e20d7f4e0b84a31376ad882326aa4748be5b92c",
+    ".claude/hooks/verify.mjs": "5dad000d0fd667c5bdc528ce776dad226e63d9d5cb867df217f5d3f2721d6448",
+    ".claude/templates/settings-fragment.json": "fd63df4ab965415fea6a94e70e15560a2651fea90471a9c7371f79f5fc72adce",
+    ".claude/templates/spec-driven.json": "a92fe0b45798c8f230473197bb97d9fc6ca2b1d8c15232a4e7c29ebdde11ab49",
+    ".claude/skills/amend-spec/SKILL.md": "43b906a63afed780b9e73b9e36be75ed2885a5a89f6224e3ac34d14995f2637d",
+    ".claude/skills/bugfix/SKILL.md": "98e0b023b2a3b7d58e4766a90e15a11575df56cafd6eeca1ec1d08671a797c68",
+    ".claude/skills/build-slice/SKILL.md": "06f8eb64039e5166d3917de8bec955b8fb39b60b7cd564e5b44d6745b2afc0f7",
+    ".claude/skills/investigate/SKILL.md": "d5c594e4aaa9b66b66412970c92d37c0713999ae1999ffb055f08af96ae46625",
+    ".claude/skills/new-feature/SKILL.md": "1d275c19ac19df38eab493a1e128acb3312961f445caee3b72900261c8e859a4",
+    ".claude/skills/write-spec/SKILL.md": "4dcc79cd2399a2cfc3d9b4bfe3ba88ecccc0ae60f811913d31204ab3838da223",
+    ".claude/templates/project-settings.md": "cb2fd9f33ee92d900912894d51d76c8ca50b4f61479b3572d35abd08a82ace43",
+    ".claude/templates/slice-recap-template.md": "c9adc262e2bdf01c99cc8c8179f214d90e5df86beb75638664f2d5438dfa763e",
+    ".claude/templates/spec-template.md": "dfcecc22d70d71c1d95407aeb975a01636ac5f8626fcb99989051ed9b3c1f28d",
+    ".claude/rules/spec-driven.md": "67716b15ea80c71e86799bfa948001e6abe85eecc5dcb6343d06a624bf009727",
+    ".claude/agents/git.md": "51b5ce8121b910aa87e1002b80decfd4f36fb898ff8abd80df0b59b1b0feae0b",
+    ".claude/agents/sonar-review.md": "bd0d5f4c662d7ccd76be08d1821cafc0a59fcecc5e46b5abdced2b33823cfe36"
+  },
+  "addedAsk": [
+    "Bash(git commit)",
+    "Bash(git commit *)",
+    "Bash(git push)",
+    "Bash(git push *)",
+    "PowerShell(git commit)",
+    "PowerShell(git commit *)",
+    "PowerShell(git push)",
+    "PowerShell(git push *)"
+  ]
+}

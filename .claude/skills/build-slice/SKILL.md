@@ -1,72 +1,44 @@
 ---
 name: build-slice
-description: "Use when implementing a slice of an approved spec (_specs/<FeatureName>/spec.md). Writes the slice test first and sees it fail, builds with a unit test before each piece of logic, proves the slice, has it verified by a context-free agent, writes the recap, and stops for the user to review and commit."
-argument-hint: "The spec and the slice, e.g. 'Subscriptions slice 1' or 'next slice of Subscriptions'"
+description: "Use when implementing a slice of an approved spec (_specs/<FeatureName>/spec.md), on the user's go for that slice. Builds exactly that slice from its Scaffold rows, test-driven without exception, ends on the slice gate green and answers with the record: each acceptance criterion with its test and the failure seen when it was red; commits only when the user asks."
+argument-hint: "The spec and the slice, e.g. 'Subscriptions slice 1'"
 ---
 
 # Build Slice
 
-Build one slice of an approved spec, following `.claude/rules/spec-driven.md` and the values in `CLAUDE.md` § Project settings. One slice per session.
+Build exactly the approved slice of `_specs/<Feature>/spec.md` the user gave the go for, using its Scaffold rows. One slice per session; the tree must be clean and on the spec's branch, otherwise ask. The values in `CLAUDE.md` § Project settings apply.
 
-## Before changing files
+If the spec is wrong or incomplete in a way that changes behavior, a Scaffold file or its wiring, stop and say so (`amend-spec`); a different file name or place only goes in the record.
 
-1. **Read the spec**: `_specs/<FeatureName>/spec.md`. Its Status must show it approved; if not, stop and say so. The next slice is the first row in Slices whose state is "todo".
-2. **Read the earlier recaps** (`slice-*.md` next to the spec): "Differs from the spec" and the decisions under "How it is built". They hold what the previous sessions settled and the spec does not prescribe, such as how the stub is switched on or how the test harness is set up. Follow them.
-3. **Check the branch and the working tree**: be on the spec's branch, named in the first line of its Status, and the tree must be clean. On another branch with a clean tree, switch to it. A spec without a branch (written before this rule) gets one now, as `.claude/rules/spec-driven.md` § One branch per spec says, recorded in its Status. Never build on a protected branch or on another spec's branch. Uncommitted changes of an earlier slice mean the user has not accepted it yet: ask, do not build on top of it.
-4. **Read the code the slice touches**, and the reference feature named in the spec's Findings for every layer involved. Path-scoped rules in `.claude/rules/` load as you open those files; follow them.
-5. **State the approach** in a few lines in the conversation: the slice test and where it enters the system, the layers the slice passes through, the logic that will get unit tests, anything the spec did not foresee. For a slice marked ⚠️, wait for the user's go. For the others, continue.
+## Guidelines
 
-If the spec turns out to be wrong or incomplete in a way that changes behavior or architecture, stop and use the `amend-spec` skill. Do not build around a gap silently.
+The guidelines apply to every line: the project's rules under `.claude/rules/`, the testing, architecture and coding guidelines among them (each found by its first line `<!-- guideline: <role> -->`).
 
-## Building
+## Test-driven without exception
 
-Two loops, the outer one first.
+Note HEAD as the slice's base. See each new test fail first, filtered: it runs and fails on its assertion because the behavior is missing; a build error, a missing type, an exception or a skipped test is not that failure, so new code compiles and returns a default before its test runs. A data-driven test is seen failing with each row.
+1. **Integration test first.** Write the slice's integration test of its behavior in the Integration test project, entering through the page or component the user uses, not through the view model, so the page's own wiring (grid rows, sort, paging) is under test (rendered on the real DI container, real view model and services; only the browser edge, the clock, auth and the backend client faked; never in the UI test project); a stub slice's test is this same integration test with the stub as the faked backend client, not a separate bUnit test. Add only the stubs the Scaffold rows name so it compiles, then run it: it is seen failing for the right reason: the behavior is missing, not the harness or the setup.
+2. **Unit tests.** For each rule or calculation, a unit test seen failing, then the smallest code to pass, then refactor with every test green.
+3. **Page tests.** A page test for rendering is written before its code and seen red too.
+4. Repeat until the integration test is green. Each test carries its criterion id (`AC-3`). Which tests are worth writing, at which level, and what they assert: R-1 to R-7 of the testing guideline; a new test without its line in the test list is deleted.
 
-1. **Slice test first.** Write the scenario the slice names, at the level the Project settings define: for a wire slice or a slice without UI, an integration test through the real entry point down to real persistence; for a stub slice, a UI test of the page on its stubbed service. Add only what is needed for it to run (an empty route, a type that compiles). Run it filtered and confirm it fails because the behavior is missing. A failure in the harness, the setup or the test's own code is not that failure: fix it and run again.
-2. **Unit test before logic.** Take the next thing the slice test needs. When it is logic (a rule, a branch, a calculation, a mapping, an error path, page state), write its unit test, see it fail for the expected reason, then write the minimal code that passes it. When it is wiring between layers, the slice test is the failing test that asks for it. Repeat until the slice test passes.
-3. **Mark the criteria.** Every test that proves an acceptance criterion carries its id (`AC-3`) in its name or in a trait, tag or comment, in the way the project's existing tests do it.
-4. **Leave the slice test as written.** If it had to change to pass, say what changed and why in the recap.
-5. **Refactor** with all tests green, and clear linter and analyzer warnings without weakening or disabling a rule. Mirror the reference feature's structure and naming.
-6. **Prove**: run the Verification Commands; all green, zero warnings. Check each acceptance criterion of the slice the way the spec says.
-7. **Run the human check yourself** as far as you can: start the application, make the call or open the page with the browser tool the Project settings name, and keep the output or a screenshot. Whatever you could not carry out, say so; do not report it as done.
+A test is seen failing only before the behavior exists; the build never modifies, comments out or breaks production code to see a test fail.
+An existing test is never changed or weakened unless the spec's criteria require it; then the record says which and why. Security and personal-data criteria are tested like any other: every case the rule names.
+Read each file once (Grep or Glob first, then the range you need); use quiet build and test commands.
 
-The two kinds of UI slice:
+## Verification is the gate
 
-- **Stub slice**: build the page, form or component with its real interaction and its real state handling, behind the same service interface the wire slice will implement, on a stub that returns fake data. Cover the states the spec names (filled, empty, error, loading). No backend code. Make the stub easy to switch on for the human check and easy to remove.
-- **Wire slice**: replace the stub from the API down to persistence, with the integration test first. Remove the stub and its fake data from the production path. The stub slice's UI tests keep passing; when one has to change, the contract moved: say so in the recap.
+Run `node .claude/hooks/verify.mjs --slice <IntegrationTestClass>` until it is green, fixing what it reports (a filter that matches zero tests is red). Quote its last line.
+Then the mutation check, the proof that the slice's tests can fail (with the dotnet-shared pack): `node scripts/mutation-check.mjs --slice <n> --base <commit>` (the slice's base) until it is green. It mutates and scores only the slice's changed lines: a survivor outside the slice's changed lines is never a reason to add a test, and tests for existing behaviour are out of scope unless the spec asks for them (R-1 to R-7). It writes `_specs/<Feature>/mutation-<n>.md`; classify each survivor there with one line why. A survivor is 'equivalent' only if no test could ever observe the change (same output, state and side effects for every input). Code that is merely untested or 'out of scope' is not equivalent: add or strengthen a test (seen red first), or list it as 'accepted' for the reviewer to approve. Never weaken code or delete a line to raise the score.
 
-For a slice that only adds tests to behavior that already exists, see each new test fail by breaking the behavior on purpose or asserting the opposite, then restore it.
+## The record is the final answer
 
-## Independent checks
+Your final answer in the conversation, no file:
+- one line per acceptance criterion: the test that proves it and the failure message seen when that test was red;
+- the test list (R-1): one line for each new test, `test name -> AC -> the bug it catches`;
+- the slice gate's last line, quoted;
+- the mutation check's score line, and each survivor with its classification and why;
+- anything that differs from the spec (an existing test changed, and why);
+- how the user tries it: the steps, commands and addresses of this project.
 
-Your own account of the build is not the proof. Before the recap:
-
-1. **Verifier.** Start the `slice-verifier` agent with the spec path and the slice number, and nothing else from this session. It re-runs the slice's checks and breaks the behavior on purpose to see them fail. Fix what it reports, test first, and run it again. Its final report goes into the recap as it is, including what it could not check.
-2. **Security review**, for a slice marked ⚠️: run the `security-review` skill on the pending changes. Fix real defects test first; list what remains in the recap for the user to decide.
-
-## Recap and stop
-
-1. Write `_specs/<FeatureName>/slice-<n>.md` from `.claude/templates/slice-recap-template.md`:
-   - **What you can do now**: the behavior added, in the user's words.
-   - **How it is built**: the path a request takes, the decisions the spec did not prescribe, and the spec's architecture diagram with this slice's part marked.
-   - **Proof**: the slice test and what it failed on first, the unit tests added, the Verification Commands, each acceptance criterion with its evidence, the verifier's verdict.
-   - **What to review**: three to seven places in the diff, in reading order, each with what to look for. Start with the slice test; include every part that touches a risk area.
-   - **Try it**: the human check as steps that work now, with the commands and addresses of this project. For a stub slice, say that the data is fake, how the stub is switched on, and what the user is asked to judge (layout, wording, interaction).
-   Keep it to one screen. The recap helps the user understand and judge the slice; it is not a log of the session. A hook refuses the recap while the Verification Commands fail; make them pass, do not work around the hook.
-2. In the spec, set the slice's state to "built" and add one line to Status: slice, date, proof result, decisions taken. The state becomes "accepted" with the user's commit; the next session sets it when it finds the slice committed.
-3. Stop and report in the conversation: what the user can do now, the proof and the verifier's verdict, the path of the recap (to open in a Markdown preview for the diagram), and the steps to try it.
-
-Do not commit unless the user asks for it. The user reads the recap, tries the slice, reviews the diff and commits the code with the recap, or asks you to commit it; that commit is the acceptance. When asked, commit the code and the recap together in the project's commit format, and push only if the push is asked for as well. Build the next slice only when the user asks for it and the working tree is clean.
-
-### Batch mode
-
-Only when the spec's Status holds "batch mode on". After the recap of a slice that is not marked ⚠️ and that the verifier passed without open findings:
-
-1. commit the code and the recap together in the project's commit format; do not push;
-2. go on to the next slice in this session. Start again from "Before changing files": re-read the spec and the recaps, and rely on them, not on what you remember of the session.
-
-Stop as usual at a slice marked ⚠️, at a verifier finding you cannot resolve, at a spec that needs amending, and after the last slice. Then list the slices built in this run with their recaps, so the user can review them together.
-
-## After the last slice
-
-Start the `spec-reviewer` agent. Give it the spec path and the diff range (base branch to HEAD), nothing from this session. Relay its report to the user as it is, with what you would change in response. When the user has accepted the review, add "<date>: shipped" to the spec's Status.
+No slice plan file, no recap file, no spec edits, no reviewing agent per slice. Then stop: the user checks the slice and gives the go for the next. Commit only when the user asks, `_specs/<Feature>/mutation-<n>.md` with the slice.
