@@ -1,4 +1,4 @@
-// Tests of kit 2.5.0, "lean", to 2.6.5 (_specs/KitLean/spec.md). Unit: the kit's texts as data.
+// Tests of kit 2.5.0, "lean", to 2.6.5 (_specs/KitLean/spec.md), and of 3.0.0, the generic .NET harness. Unit: the kit's texts as data.
 // Slice 1: the spec stage checks against the code and runs the critic only on request.
 
 import assert from 'node:assert/strict';
@@ -395,7 +395,9 @@ describe('KitLean slice 5: the final review runs spec-reviewer and security-revi
 
 // The kit's current version: 2.5.0 from slice 6, moved to 2.5.1 by slice 8, to 2.5.2 by slice 9, to 2.5.3 by slice 11
 // to 2.5.4 by slice 12, to 2.5.5 by slice 13, to 2.5.6 by slice 14, to 2.5.7 by slice 15, to 2.5.8 by slice 16, to 2.5.9 by slice 17, to 2.5.10 by slice 18, to 2.5.11 by slice 19, to 2.6.0 by slice 20, to 2.6.1 by slice 21, to 2.6.2 by slice 22, to 2.6.3 by slice 23, to 2.6.4 by slice 24 and to 2.6.5 by slice 25 (as the installer, guidelines and unattended tests move).
-const VERSION = '2.6.5';
+const VERSION = '3.0.0'; // 3.0.0: the generic .NET harness
+/** 3.0.0: the server-based analysis the kit no longer ships, spelled in parts so that a grep of the kit for its name stays clean. */
+const SERVER_ANALYSIS = new RegExp(['So', 'nar'].join(''), 'i');
 /**
  * sha (CRLF read as LF, as tree() does) of the files at c9feecb, the 2.4.0 kit this spec starts from.
  * D13 (amended AC-12): hooks/verify.mjs left this list; what changed in it is checked by AC-24 (slice 10).
@@ -1135,8 +1137,8 @@ describe('KitLean slice 12: kit 2.5.4, diagrams render', () => {
   });
 });
 
-// Slice 13: kit 2.5.5 (amended 2026-11-23, BR-33 to BR-35, AC-36 to AC-38): code analysis. The owner asked where
-// SonarQube analysis and the fixing of code-analysis warnings happen in the process; until 2.5.4 nowhere explicitly.
+// Slice 13: kit 2.5.5 (amended 2026-11-23, BR-33 to BR-35, AC-36 to AC-38): code analysis in the final review.
+// 3.0.0: the analysis is the built-in .NET analysis, with no server.
 
 /** sha (CRLF read as LF) of the two hooks at 6ba02be (kit 2.5.4); 2.5.5 changes neither. */
 const AT_6BA02BE = {
@@ -1202,14 +1204,17 @@ describe('KitLean slice 13: kit 2.5.5, code analysis', () => {
     assert.match(warnings, /every slice leaves no new warning in the files it touched/i, 'Project settings lost the no-new-warning rule');
   });
 
-  test('AC-36: the rules no longer carry the warnings rule (2.6.0: AC-62) and the Project settings advise the Sonar analyzer in the build', () => {
+  // 3.0.0: the analysis is the built-in .NET analysis in the build, with no server.
+  test('AC-36 (3.0.0): the rules no longer carry the warnings rule; the Project settings declare the built-in .NET analysis, no server, and never silence a rule', () => {
     assert.ok(!existsSync(join(KIT, RECAP_TEMPLATE)), 'the recap template is still shipped');
     assert.doesNotMatch(read(RULES_FILE), /no new warning in the files the slice touched/i, 'the rules still carry the build\'s warnings rule');
     const settings = read(SETTINGS_TEMPLATE);
-    const advice = lineOf(settings, /SonarAnalyzer\.CSharp/, 'the Sonar analyzer advice');
-    for (const term of [/reference the Sonar analyzer in the build/i, /`SonarAnalyzer\.CSharp`/, /Sonar rules run locally on every build/i]) {
-      assert.match(advice, term, `the Project settings' advice does not say ${term}`);
+    const analysis = lineOf(settings, /^- \*\*Analysis\*\*/, 'the Analysis line');
+    for (const term of [/`EnableNETAnalyzers`/, /`AnalysisLevel`/, /`EnforceCodeStyleInBuild`/, /`\.editorconfig`/, /`TreatWarningsAsErrors` where the project chooses it/, /`dotnet format --verify-no-changes`/, /no server/i]) {
+      assert.match(analysis, term, `the Analysis line does not say ${term}`);
     }
+    const warnings = lineOf(settings, /^- \*\*Warnings in the build\*\*/, 'the Warnings in the build line');
+    assert.match(warnings, /never switched off/i, 'the Warnings line allows silencing a rule');
   });
 
   // 2.6.0 (BR-60, AC-62): the final review is new-feature's Review step, its parts as bullets in the same order.
@@ -1219,7 +1224,7 @@ describe('KitLean slice 13: kit 2.5.5, code analysis', () => {
     const analysis = lineOf(last, /^\s+- the code analysis/, 'the code analysis bullet');
     for (const term of [/\*\*Analysis\*\*/, /\*\*Fix analysis\*\*/, /changed code/i, /feature gate again/i, /never by weakening, disabling or suppressing a rule/i,
       /`artifacts\/<FeatureName>-analysis\.md`/, /final review report/i, /no (code )?analysis is declared[^\n]*skip/i, /cannot run[^\n]*why/i,
-      /never sends code anywhere the project's own settings do not already send it/i, /never stores a token/i]) {
+      /built-in analyzers/i, /`dotnet format --verify-no-changes`/]) {
       assert.match(analysis, term, `new-feature's code analysis does not say ${term}`);
     }
   });
@@ -1227,9 +1232,9 @@ describe('KitLean slice 13: kit 2.5.5, code analysis', () => {
   test('AC-37: the Project settings template has the Analysis and Fix analysis lines; spec-reviewer reports the unfixed findings for the owner', () => {
     const settings = read(SETTINGS_TEMPLATE);
     const analysis = lineOf(settings, /^- \*\*Analysis\*\*/, 'the Analysis line');
-    for (const term of [/`sonar-review`/, /SonarScanner/, /final review/i, /never stores a token/i, /never sends code anywhere/i]) assert.match(analysis, term, `the Analysis line does not say ${term}`);
+    for (const term of [/final review/i, /runs on the machine only and sends no code anywhere/i]) assert.match(analysis, term, `the Analysis line does not say ${term}`);
     const fix = lineOf(settings, /^- \*\*Fix analysis\*\*/, 'the Fix analysis line');
-    for (const term of [/`code-analysis`/, /`fix-violations`/]) assert.match(fix, term, `the Fix analysis line does not say ${term}`);
+    assert.match(fix, /`dotnet format`/, 'the Fix analysis line does not name dotnet format');
     const reviewer = read('.claude/agents/spec-reviewer.md');
     assert.match(reviewer, /`artifacts\/<FeatureName>-analysis\.md`/, 'spec-reviewer does not read the code analysis findings');
     assert.match(section(reviewer, 'Report'), /code analysis[^\n]*(could not fix|not fixed)[^\n]*owner/i, 'spec-reviewer\'s report does not list the unfixed findings for the owner');
@@ -1252,8 +1257,7 @@ describe('KitLean slice 13: kit 2.5.5, code analysis', () => {
     const [newest, previous] = positions(changelog, [/^## 2\.5\.5 /m, /^## 2\.5\.4 /m]);
     assert.ok(newest < previous, 'the 2.5.5 entry is not the newest');
     const entry = changelog.slice(newest, previous);
-    for (const term of [/BR-33/, /BR-34/, /`SonarAnalyzer\.CSharp`/, /\*\*Analysis\*\*/, /\*\*Fix analysis\*\*/, /never stores a token/i, /### Upgrade notes/,
-      /`verify\.mjs` and `guard\.mjs` are unchanged/]) {
+    for (const term of [/BR-33/, /BR-34/, /\*\*Analysis\*\*/, /\*\*Fix analysis\*\*/, /3\.0\.0/]) {
       assert.match(entry, term, `the 2.5.5 entry does not say ${term}`);
     }
     assertHooksPinned(); // 2.5.8 (BR-47): verify.mjs pinned at 2.5.8, guard.mjs at 6ba02be.
@@ -1261,8 +1265,7 @@ describe('KitLean slice 13: kit 2.5.5, code analysis', () => {
 });
 
 // Slice 14: kit 2.5.6 (amended 2026-11-23, BR-36 to BR-39, AC-39 to AC-42): the pack rules applied by path and named
-// in plan, recap and review; a code-analysis loop in every slice; SonarQube once per slice. Reference: the owner's
-// owner's earlier rule-sync repository.
+// in review. The per-slice analysis it also added is gone since 2.6.0, the server analysis since 3.0.0.
 
 /** The pack-checks module, loaded per test so that a missing export fails that test and not the whole file. */
 const packChecks = () => import(pathToFileURL(join(KIT, 'tools/pack-checks.mjs')).href);
@@ -1275,9 +1278,9 @@ function installedPackRules(dir, packs) {
     return { name, text: readFileSync(join(dir, rel), 'utf8') };
   });
 }
-const ALL_PACKS = [['operations', 'dotnet-shared', 'dotnet-library', 'blazor-wasm'], ['operations', 'dotnet-shared', 'blazor-server']];
+const ALL_PACKS = [['dotnet-shared']];
 
-describe('KitLean slice 14: kit 2.5.6, pack rules applied, a code-analysis loop per slice, SonarQube once per slice', () => {
+describe('KitLean slice 14: kit 2.5.6, pack rules applied by path', () => {
   let kit;
   before(() => { kit = kitCopy(); });
   after(cleanup);
@@ -1308,10 +1311,9 @@ describe('KitLean slice 14: kit 2.5.6, pack rules applied, a code-analysis loop 
       const buildSlice = readFileSync(join(dir, '.claude/skills/build-slice/SKILL.md'), 'utf8');
       assert.deepEqual(unscopedRules(rules, [buildSlice]), [], `installed with ${packs}: a pack rule loads for no file and is named nowhere`);
       const testFile = rulesCovering('src/Test/Unit/Feature.Tests/ExportTests.cs', rules);
-      for (const name of ['tests', 'testing-for-agents', 'coding']) assert.ok(testFile.includes(name), `installed with ${packs}: ${name} does not cover a test file (${testFile})`);
+      assert.ok(testFile.includes('testing-for-agents'), `installed with ${packs}: testing-for-agents does not cover a test file (${testFile})`);
       const domainFile = rulesCovering('src/Core/Domain/Export.cs', rules);
-      for (const name of ['coding', 'architecture-shared']) assert.ok(domainFile.includes(name), `installed with ${packs}: ${name} does not cover a domain file (${domainFile})`);
-      for (const name of ['tests', 'testing-for-agents']) assert.ok(!domainFile.includes(name), `installed with ${packs}: ${name} covers a domain file`);
+      assert.ok(!domainFile.includes('testing-for-agents'), `installed with ${packs}: testing-for-agents covers a domain file`);
     }
   });
 
@@ -1336,36 +1338,36 @@ describe('KitLean slice 14: kit 2.5.6, pack rules applied, a code-analysis loop 
     assert.match(section(text, 'Verification is the gate'), /until it is green, fixing what it reports/i, 'build-slice does not fix what the gate reports');
   });
 
-  test('AC-40, now AC-44: the Project settings name the analyzer filter and the formatter, the recap template is gone and the rules\' Build phase names no loop', () => {
+  test('AC-40, now AC-44 (3.0.0: no Analyzer warnings filter): the Project settings name the formatter, the recap template is gone and the rules\' Build phase names no loop', () => {
     const settings = read(SETTINGS_TEMPLATE);
-    assert.match(lineOf(settings, /^- \*\*Analyzer warnings\*\*/, 'the Analyzer warnings line'), /\(SA\|SX\|CA\|CS\|MSTEST\)/, 'the Analyzer warnings line has no .NET filter');
+    assert.doesNotMatch(settings, /\*\*Analyzer warnings\*\*/, 'the Project settings still carry the Analyzer warnings filter');
     assert.match(lineOf(settings, /^- \*\*Formatter\*\*/, 'the Formatter line'), /`dotnet format/, 'the Formatter line does not name dotnet format');
     assert.ok(!existsSync(join(KIT, RECAP_TEMPLATE)), 'the recap template is still shipped');
-    assert.doesNotMatch(lineOf(read(RULES_FILE), /^\| 4\. Build/, 'the rules\' Build phase'), /code-analysis loop/i, 'the rules\' Build phase still names the loop');
+    assert.doesNotMatch(lineOf(read(RULES_FILE), /^\| 4\. Build/, 'the rules\' Build phase'), /code.analysis loop/i, 'the rules\' Build phase still names the loop');
   });
 
-  // 2.6.0 (BR-58, BR-60, AC-61, AC-62): the per-slice Sonar analysis is retired; the project's Analysis runs once, in the
+  // 2.6.0 (BR-58, BR-60, AC-61, AC-62): the per-slice server analysis is retired; the project's Analysis runs once, in the
   // final review in new-feature, quality gate included, and names what is missing when it cannot run.
   // 2.6.1 (D19, BR-67, AC-69, the owner's correction of 2026-11-24): the analysis stays once per feature, in the final
   // review, as in 2.6.0.
   test('outer test (AC-41, 2.6.0: AC-61, AC-62, 2.6.1: AC-69): no per-slice analysis in build-slice; new-feature\'s final review runs the Analysis once with the quality gate and names what is missing', () => {
-    assert.doesNotMatch(skill('build-slice'), /Sonar|\*\*Analysis\*\*|code analysis/i, 'build-slice still runs a per-slice analysis');
+    for (const term of [SERVER_ANALYSIS, /\*\*Analysis\*\*|code analysis/i]) assert.doesNotMatch(skill('build-slice'), term, 'build-slice still runs a per-slice analysis');
     const analysis = lineOf(step(section(skill('new-feature'), 'Workflow'), 'Review'), /^\s+- the code analysis/, 'the code analysis bullet');
-    for (const term of [/\*\*Analysis\*\*/, /quality gate/i, /\*\*Fix analysis\*\*/, /feature gate again/i, /cannot run, say what is missing and why/i, /never stores a token/i, /no code analysis declared/i]) {
+    for (const term of [/\*\*Analysis\*\*/, /\*\*Fix analysis\*\*/, /feature gate again/i, /cannot run, say what is missing and why/i, /no code analysis declared/i]) {
       assert.match(analysis, term, `new-feature's code analysis does not say ${term}`);
     }
   });
 
   test('AC-41 (2.6.0: AC-62, 2.6.1: AC-69): the rules have no per-slice analysis stop; the Analysis line runs once per feature, in the final review, and names what it needs', () => {
-    assert.doesNotMatch(section(read(RULES_FILE), 'Where Claude stops'), /Sonar analysis/i, 'the rules still stop on a missing slice analysis');
+    assert.doesNotMatch(section(read(RULES_FILE), 'Where Claude stops'), SERVER_ANALYSIS, 'the rules still stop on a missing slice analysis');
     const analysis = lineOf(read(SETTINGS_TEMPLATE), /^- \*\*Analysis\*\*/, 'the Analysis line');
-    for (const term of [/run once per feature, in the final review/i, /quality gate/i, /server URL/i, /`SONAR_TOKEN`/, /scanner/i]) assert.match(analysis, term, `the Analysis line does not say ${term}`);
+    for (const term of [/run once per feature, in the final review/i, /no server/i]) assert.match(analysis, term, `the Analysis line does not say ${term}`);
     assert.doesNotMatch(analysis, /once per slice|slice gate|slice stops/i, 'the Analysis line still runs per slice');
     assert.ok(!existsSync(join(KIT, RECAP_TEMPLATE)), 'the recap template is still shipped');
   });
 
   // 2.5.7 (BR-41, BR-44): the README's Build row names the gate's own build output, no loop; the version moves to 2.5.7.
-  // 2.6.0 (BR-58, BR-62): the README's Build row applies the guidelines to every line; its Verify and check row runs no Sonar per slice.
+  // 2.6.0 (BR-58, BR-62): the README's Build row applies the guidelines to every line; its Verify and check row runs no analysis per slice.
   // 2.6.1 (BR-67, AC-69, the owner's correction of 2026-11-24): the README's Verify and check row says the analysis runs
   // once per feature, in the final review, never per slice.
   test('outer test (AC-42): the rules name no per-slice analysis; the README applies the guidelines and runs no analysis per slice; the version is the kit\'s; CHANGELOG 2.5.6 with upgrade notes; hooks pinned', () => {
@@ -1375,7 +1377,7 @@ describe('KitLean slice 14: kit 2.5.6, pack rules applied, a code-analysis loop 
     const build = lineOf(readme, /^\| Build \|/, 'the README\'s Build row');
     assert.match(build, /guidelines apply to every line/i, 'the README\'s Build row does not apply the guidelines');
     const verifyRow = lineOf(readme, /^\| Verify and check \|/, 'the README\'s Verify and check row');
-    assert.doesNotMatch(verifyRow, /Sonar|once for the slice|once per slice/i, 'the README\'s Verify row still names a per-slice analysis');
+    for (const term of [SERVER_ANALYSIS, /once for the slice|once per slice/i]) assert.doesNotMatch(verifyRow, term, 'the README\'s Verify row still names a per-slice analysis');
     assert.match(verifyRow, /code analysis[^\n]*once per feature[^\n]*final review/i, 'the README\'s Verify row does not say the analysis runs once per feature, in the final review');
     assert.equal(rules.split(/\r?\n/)[0], `<!-- spec-driven-kit ${VERSION} -->`, `the rules file is not ${VERSION}`);
     assert.equal(JSON.parse(read('.claude-plugin/plugin.json')).version, VERSION, `plugin.json is not ${VERSION}`);
@@ -1383,8 +1385,7 @@ describe('KitLean slice 14: kit 2.5.6, pack rules applied, a code-analysis loop 
     const [newest, previous] = positions(changelog, [/^## 2\.5\.6 /m, /^## 2\.5\.5 /m]);
     assert.ok(newest < previous, 'the 2.5.6 entry is not the newest');
     const entry = changelog.slice(newest, previous);
-    for (const term of [/BR-36/, /BR-37/, /BR-38/, /rule-sync repository/, /### Upgrade notes/, /server URL/i, /\*\*Sonar project key\*\*/, /`SONAR_TOKEN`/, /scanner/i,
-      /\*\*Analyzer warnings\*\*/, /\*\*Formatter\*\*/, /`verify\.mjs` and `guard\.mjs` are unchanged/]) {
+    for (const term of [/BR-36/, /`paths:`/, /`globMatches`/, /3\.0\.0/]) {
       assert.match(entry, term, `the 2.5.6 entry does not say ${term}`);
     }
     assertHooksPinned(); // 2.5.8 (BR-47): verify.mjs pinned at 2.5.8, guard.mjs at 6ba02be.
@@ -1393,7 +1394,7 @@ describe('KitLean slice 14: kit 2.5.6, pack rules applied, a code-analysis loop 
 
 // Slice 15: kit 2.5.7 (amended 2026-11-23, BR-40 to BR-44, AC-43 to AC-47): adopted experiment 1 of the owner's harness
 // experiments (the owner's benchmark: 5.57 to 4.78 USD, 149 to 121 turns, quality held). No slice-plan file, no separate
-// code-analysis build, a recap that does not repeat the spec, no leftover verifier.
+// analysis build, a recap that does not repeat the spec, no leftover verifier.
 
 const TODO_LIST = /todo list/i;
 /** Names of the retired slice plan: the file, its template, and the plan as a document. */
@@ -1461,23 +1462,21 @@ describe('KitLean slice 15: kit 2.5.7, adopted experiment 1', () => {
     assert.match(section(read('.claude/agents/spec-reviewer.md'), 'What to do'), /pack rules[^\n]*`paths`[^\n]*match/i, 'spec-reviewer no longer checks the pack rules whose paths match');
   });
 
-  test('outer test (AC-44, 2.6.0: AC-61): build-slice runs no separate code-analysis build: it fixes what the slice gate reports and runs it again until green', () => {
+  test('outer test (AC-44, 2.6.0: AC-61): build-slice runs no separate analysis build: it fixes what the slice gate reports and runs it again until green', () => {
     const text = skill('build-slice');
     assert.doesNotMatch(text, /^\d+\. \*\*Code analysis/m, 'build-slice still has a Code analysis step before the gate');
-    assert.doesNotMatch(text, /code-analysis loop|filtered build|build filtered/i, 'build-slice still runs a filtered build loop');
+    assert.doesNotMatch(text, /code.analysis loop|filtered build|build filtered/i, 'build-slice still runs a filtered build loop');
     assert.match(section(text, 'Verification is the gate'), /until it is green, fixing what it reports/i, 'build-slice does not fix what the gate reports and run it again');
   });
 
-  test('AC-44: the Analyzer warnings line filters the gate\'s output, the Formatter fixes a failed format check, and the rules name no loop', () => {
+  // 3.0.0: the Analyzer warnings filter is gone with the server analysis; the slice gate's output is read as it is.
+  test('AC-44: the Formatter fixes a failed format check, and the rules name no loop', () => {
     const settings = read(SETTINGS_TEMPLATE);
-    const analyzer = lineOf(settings, /^- \*\*Analyzer warnings\*\*/, 'the Analyzer warnings line');
-    assert.match(analyzer, /slice gate's build output/i, 'the Analyzer warnings line does not filter the gate\'s build output');
-    assert.doesNotMatch(analyzer, /loop/i, 'the Analyzer warnings line still runs a loop');
     const formatter = lineOf(settings, /^- \*\*Formatter\*\*/, 'the Formatter line');
     assert.match(formatter, /format check/i, 'the Formatter line does not fix a failed format check');
     assert.doesNotMatch(formatter, /loop/i, 'the Formatter line still runs in a loop');
     const rules = read(RULES_FILE);
-    assert.doesNotMatch(rules, /code-analysis loop/i, 'the rules still name a code-analysis loop');
+    assert.doesNotMatch(rules, /code.analysis loop/i, 'the rules still name an analysis loop');
     // 2.6.0 (BR-59, AC-62): the rules' Build phase leaves the warnings to build-slice and the slice gate.
     assert.match(lineOf(rules, /^\| 4\. Build/, 'the rules\' Build phase'), /slice gate green/i, 'the rules\' Build phase does not end on the slice gate');
   });
@@ -1531,7 +1530,7 @@ describe('KitLean slice 15: kit 2.5.7, adopted experiment 1', () => {
     const readme = read('README.md');
     const build = lineOf(readme, /^\| Build \|/, 'the README\'s Build row');
     assert.match(build, /Scaffold rows[^\n]*no slice plan file|no slice plan file[^\n]*Scaffold rows/i, 'the README\'s Build row does not build from the Scaffold rows without a plan file');
-    assert.doesNotMatch(readme, /code-analysis loop/i, 'the README still names the code-analysis loop');
+    assert.doesNotMatch(readme, /code.analysis loop/i, 'the README still names the analysis loop');
     const verify = lineOf(readme, /^\| Verify and check \|/, 'the README\'s Verify and check row');
     for (const term of [/one line per acceptance criterion with the test/i, /differs from the spec/i, /how the user tries it/i, /last line quoted/i]) assert.match(verify, term, `the README's Verify row does not say ${term}`);
     assertHooksPinned(); // 2.5.8 (BR-47): verify.mjs pinned at 2.5.8, guard.mjs at 6ba02be.
@@ -1822,12 +1821,13 @@ describe('KitLean slice 18: kit 2.5.10, one statement on slice review', () => {
   before(() => { kit = kitCopy(); });
   after(cleanup);
 
-  test('outer test (AC-56): no installed text, after an install or an update from 2.2.0, tells the build to run a slice verifier; the installed rules, build-slice and new-feature say no agent reviews a slice after the slice gate', () => {
+  // 3.0.0: the 2.2.0 fixtures of the removed packs are gone; the 2.1.0 fixture carries the same contradiction.
+  test('outer test (AC-56): no installed text, after an install or an update from 2.1.0, tells the build to run a slice verifier; the installed rules, build-slice and new-feature say no agent reviews a slice after the slice gate', () => {
     const fresh = project();
     assert.equal(install(kit, 'apply', fresh).status, 0);
-    const updated = project('project-2.2.0-library');
-    assert.match(readFileSync(join(updated, RULES_FILE), 'utf8'), /`slice-verifier` checks each slice/, 'the 2.2.0 fixture no longer carries the contradiction');
-    const run = install(kit, 'apply', updated, '--packs', 'operations,dotnet-shared,dotnet-library');
+    const updated = project('project-2.1.0');
+    assert.match(readFileSync(join(updated, RULES_FILE), 'utf8'), /`slice-verifier` checks each slice/, 'the 2.1.0 fixture no longer carries the contradiction');
+    const run = install(kit, 'apply', updated, '--packs', 'dotnet-shared');
     assert.equal(run.status, 0, run.output);
     for (const dir of [fresh, updated]) {
       for (const rel of installedTexts(dir)) assert.doesNotMatch(readFileSync(join(dir, rel), 'utf8'), SLICE_REVIEW_AGENT, `${rel} still names a slice verifier`);
@@ -1896,11 +1896,11 @@ describe('KitLean slice 19: kit 2.5.11, the installer lists kept files that diff
     assert.equal(install(kit, 'apply', dir).status, 0);
     const changed = ['.claude/skills/build-slice/SKILL.md', RULES_FILE];
     const overwritten = '.claude/skills/new-feature/SKILL.md';
-    const collision = '.claude/agents/git.md';
+    const collision = '.claude/rules/testing-for-agents.md';
     for (const rel of [...changed, overwritten]) writeFileSync(join(dir, rel), readFileSync(join(dir, rel), 'utf8') + PROJECT_EDIT);
-    writeFileSync(join(dir, collision), "# The project's own git guide\n");
+    writeFileSync(join(dir, collision), "# The project's own testing rule\n");
     const edited = Object.fromEntries(changed.map((rel) => [rel, sha(readFileSync(join(dir, rel), 'utf8'))]));
-    const args = ['--packs', 'operations', '--overwrite', overwritten];
+    const args = ['--packs', 'dotnet-shared', '--overwrite', overwritten];
 
     const before = tree(dir);
     const plan = install(kit, 'plan', dir, ...args);
@@ -1998,8 +1998,8 @@ describe('KitLean slice 20: kit 2.6.0, slim build', () => {
       assert.match(text, term, `build-slice does not say ${term}`);
     }
     inOrder(text, [/integration test/i, /unit test/i, /smallest code/i, /refactor/i, /verify\.mjs --slice/, /final answer/i], 'build-slice\'s order');
-    // 2.6.1 (BR-67, AC-69, the owner's correction of 2026-11-24): no code analysis per slice, so Sonar stays banned.
-    for (const term of [/TodoWrite/, /slice-recap-template/, /slice-<n>\.md/, /Sonar/i, /\*\*Analysis\*\*/, /spec-reviewer/, /security-review/, /--feature/]) {
+    // 2.6.1 (BR-67, AC-69, the owner's correction of 2026-11-24): no code analysis per slice, so a server analysis stays banned.
+    for (const term of [/TodoWrite/, /slice-recap-template/, /slice-<n>\.md/, SERVER_ANALYSIS, /\*\*Analysis\*\*/, /spec-reviewer/, /security-review/, /--feature/]) {
       assert.doesNotMatch(text, term, `build-slice still says ${term}`);
     }
   });
@@ -2012,7 +2012,7 @@ describe('KitLean slice 20: kit 2.6.0, slim build', () => {
     const build = lines.filter((l) => /^\| \d\. /.test(l) && /build-slice|build|slice gate/i.test(l) && !/^\| [123]\. /.test(l) && !/Review/.test(l));
     assert.ok(build.length >= 1 && build.length <= 3, `the phases table says the build in ${build.length} lines`);
     for (const term of [/Test economy/i, /TodoWrite|todo list/i, /stubs that make/i, /no new warning/i, /pack rules apply by path/i, /once per slice/i,
-      /Integration test location|integration test location/, /mutation checks/i, /Every line of production code answers a failing test/i, /Sonar analysis cannot run/i]) {
+      /Integration test location|integration test location/, /mutation checks/i, /Every line of production code answers a failing test/i, SERVER_ANALYSIS]) {
       assert.doesNotMatch(rules, term, `the rules still carry the build phase: ${term}`);
     }
     const gates = section(rules, 'Gates');
@@ -2024,7 +2024,7 @@ describe('KitLean slice 20: kit 2.6.0, slim build', () => {
   test('AC-62: new-feature holds the final review: the feature gate, the code analysis, spec-reviewer and security-review once, an optional end-to-end test, then shipped', () => {
     const review = step(section(skill('new-feature'), 'Workflow'), 'Review');
     inOrder(review, [/`node \.claude\/hooks\/verify\.mjs --feature`/, /code analysis/i, /`spec-reviewer`/, /`security-review`/], 'new-feature\'s final review');
-    for (const term of [/once/i, /never per slice/i, /Analysis/, /Fix analysis/, /no code analysis declared/i, /never stores a token/i, /artifacts\/<FeatureName>-analysis\.md/, /end-to-end browser test[^\n]*optional|optional[^\n]*end-to-end/i, /shipped/]) {
+    for (const term of [/once/i, /never per slice/i, /Analysis/, /Fix analysis/, /no code analysis declared/i, /artifacts\/<FeatureName>-analysis\.md/, /end-to-end browser test[^\n]*optional|optional[^\n]*end-to-end/i, /shipped/]) {
       assert.match(review, term, `new-feature's Review does not say ${term}`);
     }
   });
@@ -2186,7 +2186,7 @@ describe('KitLean slice 21: kit 2.6.1, the mechanical red check, code analysis o
     assert.ok(text.split(/\r?\n/).length <= 45, `build-slice has ${text.split(/\r?\n/).length} lines`);
     inOrder(text, [/Integration test first/i, /--slice <IntegrationTestClass>/], 'build-slice\'s tests and gate');
     assert.match(section(text, 'Verification is the gate'), /quote its last line/i, 'build-slice does not quote the gate\'s last line');
-    for (const term of [/code analysis/i, /\*\*Analysis\*\*/, /\*\*Fix analysis\*\*/, /Sonar/i]) assert.doesNotMatch(text, term, `build-slice still runs a per-slice analysis: ${term}`);
+    for (const term of [/code analysis/i, /\*\*Analysis\*\*/, /\*\*Fix analysis\*\*/, SERVER_ANALYSIS]) assert.doesNotMatch(text, term, `build-slice still runs a per-slice analysis: ${term}`);
   });
 
   test('AC-69: the Project settings run the Analysis once per feature, in the final review; the rules\' phases and the README say it', () => {
@@ -2285,7 +2285,7 @@ const EFFICIENT_RULES = {
   'R-2': [/constant, literal or resource value/i, /getters, setters, records, DTOs/i, /DI registration or configuration/i, /framework or third-party/i,
     /expected value computed by the code under test/i, /mock it configured itself/i, /feature removed/i, /repeats a case/i],
   'R-3': [/cheapest level/i, /pure logic/i, /distinct case or branch/i, /bUnit/, /enabled or disabled|enabled\/disabled/i, /MarkupMatches/, /role|text/i,
-    /never brittle full-markup/i, /one per slice/i, /owner's rule/i, /real DI container/i, /never builds its own input/i, /main path/i, /at most one failure or edge/i, /unit-level variants/i],
+    /never brittle full-markup/i, /at least one per slice/i, /real DI container/i, /never builds its own input/i, /main path/i, /at most one failure or edge/i, /unit-level variants/i],
   'R-4': [/outcomes?/i, /bytes, state, file names, log content/i, /rendered output/i, /system boundary/i, /backend client/i, /browser download/i, /only when the call is the behavio/i],
   'R-5': [/public surface/i, /prefer public APIs/i, /inner class/i, /too rich/i],
   'R-6': [/fewest tests/i, /merged/i, /parameteri[sz]e/i, /at least one test that would fail/i, /name the test/i],
@@ -2309,16 +2309,13 @@ describe('KitLean slice 23: kit 2.6.3, efficient-testing rules with one home and
     for (const term of SOURCES) assert.match(sources, term, `the sources line does not name ${term}`);
   });
 
-  test('AC-78: no other kit text or pack file restates the rules; tests, the Blazor WebAssembly Tests rows, T-6, T-13 and build-slice point to them', () => {
+  // 3.0.0: the test conventions and the Blazor architecture rules are removed with their packs.
+  test('AC-78: no other kit text or pack file restates the rules; T-6, T-13 and build-slice point to them', () => {
     const others = [...kitTexts(), ...readdirSync(join(KIT, 'packs'), { recursive: true }).map((p) => `packs/${String(p).replace(/\\/g, '/')}`)
       .filter((p) => p.endsWith('.md') && p !== TESTING_FOR_AGENTS)];
     for (const rel of others) for (const phrase of HOME_ONLY) assert.doesNotMatch(read(rel), phrase, `${rel} restates an efficient-testing rule (${phrase})`);
     for (const rel of others) assert.doesNotMatch(read(rel), /^\| R-\d \|/m, `${rel} holds a rule row R-n`);
     const pointer = /R-1 to R-7/;
-    assert.match(read('packs/dotnet-shared/rules/tests.md'), pointer, 'the test conventions do not point to R-1 to R-7');
-    assert.doesNotMatch(read('packs/dotnet-shared/rules/tests.md'), /Do \*\*not\*\* unit-test trivial DTOs/, 'the test conventions still keep their own what-not-to-test list');
-    const wasmTests = read('packs/blazor-wasm/rules/architecture-blazor-wasm.md').split(/\r?\n/).filter((l) => l.startsWith('| Tests |'));
-    assert.ok(wasmTests.some((l) => /R-3/.test(l) && /R-4/.test(l)), 'the Blazor WebAssembly Tests rows do not point to R-3 and R-4');
     assert.match(skill('build-slice'), pointer, 'build-slice does not point to R-1 to R-7');
     const t6 = lineOf(read(TESTING_FOR_AGENTS), /^\| T-6 \|/, 'T-6');
     assert.match(t6, /R-4/, 'T-6 does not point to R-4');
@@ -2336,7 +2333,7 @@ describe('KitLean slice 23: kit 2.6.3, efficient-testing rules with one home and
     for (const term of [/each new test/i, /acceptance criterion|AC/, /bug it catches/i, /R-1/]) assert.match(list, term, `the test list does not say ${term}`);
     assert.match(text, /without (?:a|its) line[^\n]*deleted|deleted[^\n]*without (?:a|its) line/i, 'build-slice does not delete a test that has no line in the test list');
     assert.match(section(text, 'Test-driven without exception'), /Integration test first/, 'build-slice lost the integration test first');
-    assert.match(section(read(TESTING_FOR_AGENTS), 'Efficient tests'), /one per slice[^\n]*owner's rule/i, 'R-3 does not keep one real integration test per slice');
+    assert.match(section(read(TESTING_FOR_AGENTS), 'Efficient tests'), /Integration: at least one per slice/i, 'R-3 does not keep one real integration test per slice');
   });
 
   // 2.6.4 (BR-84): the version moves on; the 2.6.3 entry stays, above 2.6.2; the hooks are pinned at the current version.
@@ -2491,12 +2488,12 @@ describe('KitLean slice 24: kit 2.6.4, the mutation check gate, the red check re
     assert.ok(!none.calls.some((c) => c.args[2] === 'dotnet-stryker'), 'Stryker ran without a production file');
   });
 
-  test('AC-82: when dotnet-stryker cannot be restored, or the tool manifest lacks it, the check fails with the feed message and its own exit code, never skipping', () => {
+  test('AC-82: when dotnet-stryker cannot be restored, or the tool manifest lacks it, the check fails with the restore message and its own exit code, never skipping', () => {
     const { dir, base } = mutationProject();
     withScript(dir);
     const failed = mutationCheck(dir, strykerReport(dir, [['Killed', 5, 'A']]), ['--slice', 's1', '--base', base], { FAKE_RESTORE_FAILS: '1' });
     assert.equal(failed.status, 3, `a tool that cannot be restored is not exit code 3: ${failed.output}`);
-    assert.match(failed.output, /dotnet-stryker not available: the package feed must carry it, see README/);
+    assert.match(failed.output, /dotnet-stryker not available: run dotnet tool restore \(the tool comes from nuget\.org\), see README/);
     put(dir, '.config/dotnet-tools.json', JSON.stringify({ version: 1, isRoot: true, tools: {} }));
     const missing = mutationCheck(dir, strykerReport(dir, [['Killed', 5, 'A']]), ['--slice', 's1', '--base', base]);
     assert.equal(missing.status, 3, missing.output);
@@ -2535,12 +2532,12 @@ describe('KitLean slice 24: kit 2.6.4, the mutation check gate, the red check re
   test('outer test (AC-84): the installer puts the script into the project\'s scripts/ folder and pins dotnet-stryker 5.1.0 in .config/dotnet-tools.json next to the project\'s own tools; plan writes nothing; remove takes both away', () => {
     const dir = project();
     put(dir, '.config/dotnet-tools.json', JSON.stringify({ version: 1, isRoot: true, tools: { 'dotnet-ef': { version: '8.0.0', commands: ['dotnet-ef'], rollForward: false } } }, null, 2));
-    const plan = install(kit, 'plan', dir, '--level', '3', '--packs', 'operations,dotnet-shared');
+    const plan = install(kit, 'plan', dir, '--level', '3', '--packs', 'dotnet-shared');
     assert.equal(plan.status, 0, plan.output);
     assert.ok(!existsSync(join(dir, 'scripts')), 'plan wrote the script');
     assert.ok(!readFileSync(join(dir, '.config/dotnet-tools.json'), 'utf8').includes('dotnet-stryker'), 'plan wrote the tool');
     assert.match(plan.output, /dotnet-stryker 5\.1\.0/, 'plan does not say it adds the tool');
-    const run = install(kit, 'apply', dir, '--level', '3', '--packs', 'operations,dotnet-shared');
+    const run = install(kit, 'apply', dir, '--level', '3', '--packs', 'dotnet-shared');
     assert.equal(run.status, 0, run.output);
     assert.equal(readFileSync(join(dir, 'scripts/mutation-check.mjs'), 'utf8'), read(MUTATION_SCRIPT), 'the script is not in the project\'s scripts/ folder');
     assert.ok(!existsSync(join(dir, '.claude/hooks/mutation-check.mjs')) && !existsSync(join(dir, '.claude/scripts')), 'the script landed under .claude');
@@ -2556,11 +2553,11 @@ describe('KitLean slice 24: kit 2.6.4, the mutation check gate, the red check re
     assert.ok(!existsSync(join(dir, 'scripts/mutation-check.mjs')), 'remove left the script');
     assert.deepEqual(Object.keys(JSON.parse(readFileSync(join(dir, '.config/dotnet-tools.json'), 'utf8')).tools), ['dotnet-ef'], 'remove did not take only the kit\'s tool away');
     const bare = project();
-    assert.equal(install(kit, 'apply', bare, '--level', '1', '--packs', 'operations,dotnet-shared').status, 0);
+    assert.equal(install(kit, 'apply', bare, '--level', '1', '--packs', 'dotnet-shared').status, 0);
     assert.equal(JSON.parse(readFileSync(join(bare, '.config/dotnet-tools.json'), 'utf8')).tools['dotnet-stryker'].version, '5.1.0', 'a project without a tool manifest gets none');
     const other = project();
-    assert.equal(install(kit, 'apply', other, '--level', '1', '--packs', 'operations').status, 0);
-    assert.ok(!existsSync(join(other, '.config/dotnet-tools.json')), 'a pack without the tool wrote a tool manifest');
+    assert.equal(install(kit, 'apply', other, '--level', '1').status, 0);
+    assert.ok(!existsSync(join(other, '.config/dotnet-tools.json')), 'an install without the pack wrote a tool manifest');
   });
 
   test('AC-85: build-slice runs the mutation check after the slice gate and states the classification rule; the record and the commit carry the evidence; see each new test fail first and R-1 to R-7 stay; at most 45 lines', () => {
@@ -2583,14 +2580,13 @@ describe('KitLean slice 24: kit 2.6.4, the mutation check gate, the red check re
     assert.match(t4, /mutation check/i, 'T-4 does not name the mutation check as the proof');
   });
 
-  test('AC-86: the Project settings carry the Mutation threshold (default 80) and the Test projects for dotnet-shared; the README says the feed must carry dotnet-stryker and how to check it', () => {
+  test('AC-86 (3.0.0: nuget.org, no feed): the Project settings carry the Mutation threshold (default 80) and the Test projects for dotnet-shared; the README says dotnet-stryker comes from nuget.org and how to check it', () => {
     const settings = read(SETTINGS_TEMPLATE);
     assert.match(lineOf(settings, /^- \*\*Mutation threshold\*\*/, 'the Mutation threshold line'), /80[^\n]*<!-- pack dotnet-shared/, 'the Mutation threshold line has no default 80 for dotnet-shared');
     assert.match(lineOf(settings, /^- \*\*Test projects\*\*/, 'the Test projects line'), /<!-- pack dotnet-shared/, 'the Test projects line is not dotnet-shared\'s');
     const readme = read('README.md');
     assert.match(readme, /Stryker\.NET/, 'the README does not name Stryker.NET');
-    assert.match(readme, /feed[^\n]*dotnet-stryker|dotnet-stryker[^\n]*feed/i, 'the README does not say the feed must carry dotnet-stryker');
-    assert.match(readme, /nuget\.org/, 'the README does not name nuget.org');
+    assert.match(readme, /The tool comes from nuget\.org/, 'the README does not say dotnet-stryker comes from nuget.org');
     assert.match(readme, /`dotnet tool restore`/, 'the README does not say how to check it');
     assert.match(readme, /5\.1\.0/, 'the README does not give the pinned version');
   });
@@ -2627,7 +2623,7 @@ describe('KitLean slice 24: kit 2.6.4, the mutation check gate, the red check re
     for (const term of [/D22/, /exp16/, /Stryker\.NET/, /mutation-check\.mjs/, /mutation-<slice>\.md/, /equivalent/, /red check[^\n]*removed|removed[^\n]*red check/i]) assert.match(body, term, `the 2.6.4 entry does not say ${term}`);
     assert.ok(notes, 'the 2.6.4 entry has no upgrade notes');
     for (const term of [/red-record\.json/, /RegressionGuard/, /--logger trx/, /dotnet tool restore/, /Mutation threshold/, /Test projects/, /feed/i]) assert.match(notes, term, `the upgrade notes do not say ${term}`);
-    // The private edition does not carry the upstream design spec (_specs/KitLean); the CHANGELOG records D22 and exp16.
+    // The kit does not carry the design spec (_specs/KitLean); the CHANGELOG records D22 and exp16.
     assertHooksPinned();
   });
 });
@@ -2766,9 +2762,8 @@ describe('KitLean slice 25: kit 2.6.5, mutate the changed lines only, the outer 
   });
 
   test('outer test (AC-93): 2.6.5 in the rules, plugin.json and the recorded versions; CHANGELOG 2.6.5 above 2.6.4 with upgrade notes, D23, exp17 and exp18; both hooks pinned', () => {
-    assert.equal(VERSION, '2.6.5');
-    assert.equal(read(RULES_FILE).split(/\r?\n/)[0], '<!-- spec-driven-kit 2.6.5 -->', 'the rules file is not 2.6.5');
-    assert.equal(JSON.parse(read('.claude-plugin/plugin.json')).version, '2.6.5', 'plugin.json is not 2.6.5');
+    assert.equal(read(RULES_FILE).split(/\r?\n/)[0], `<!-- spec-driven-kit ${VERSION} -->`, `the rules file is not ${VERSION}`);
+    assert.equal(JSON.parse(read('.claude-plugin/plugin.json')).version, VERSION, `plugin.json is not ${VERSION}`);
     const changelog = read('CHANGELOG.md');
     const [newest, previous] = positions(changelog, [/^## 2\.6\.5 /m, /^## 2\.6\.4 /m]);
     assert.ok(newest < previous, 'the 2.6.5 entry is not above 2.6.4');
@@ -2778,8 +2773,37 @@ describe('KitLean slice 25: kit 2.6.5, mutate the changed lines only, the outer 
     }
     assert.ok(notes, 'the 2.6.5 entry has no upgrade notes');
     for (const term of [/\/setup/, /mutation-<slice>\.md|mutation-<n>\.md/, /view model/i]) assert.match(notes, term, `the upgrade notes do not say ${term}`);
-    // The private edition does not carry the upstream design spec (_specs/KitLean); the CHANGELOG records D23, exp17 and exp18.
+    // The kit does not carry the design spec (_specs/KitLean); the CHANGELOG records D23, exp17 and exp18.
     assertHooksPinned();
+  });
+});
+
+// Kit 3.0.0: a generic .NET harness. The removed names are spelled in parts so that this file passes its own scan.
+const REMOVED_NAMES = [['so', 'nar'], ['code', '-analysis'], ['nuget', '-packaging'], ['fix', '-violations'], ['ri', 'ziv'], ['in', 'ami'], ['ni', 'hdi'],
+  ['findmy', 'doctor'], ['sm', 'als'], ['dev', '.azure'], ['visualstudio', '.com'], ['t', 'fs']].map((parts) => parts.join(''));
+/** Every file of the kit folder except git's own data, relative, with forward slashes. */
+function kitTree() {
+  return readdirSync(KIT, { recursive: true }).map((p) => String(p).replace(/\\/g, '/'))
+    .filter((p) => !p.startsWith('.git/') && p !== '.git' && !p.startsWith('node_modules/') && !p.startsWith('artifacts/'));
+}
+
+describe('kit 3.0.0: a generic .NET harness', () => {
+  test('no file of the kit, by name or content, names a removed pack item, the removed server analysis or an organisation', () => {
+    const files = kitTree();
+    for (const name of REMOVED_NAMES) {
+      const pattern = new RegExp(name.replace(/[.\-]/g, '\\$&'), 'i');
+      assert.deepEqual(files.filter((p) => pattern.test(p)), [], `a file name holds ${name}`);
+      const hits = files.filter((p) => { try { return pattern.test(readFileSync(join(KIT, p), 'utf8')); } catch { return false; } });
+      assert.deepEqual(hits, [], `files that name ${name}`);
+    }
+  });
+
+  test('the kit has only the dotnet-shared pack; no turn budget, no home-made red check, no sub-agent per build or test command', () => {
+    assert.deepEqual(readdirSync(join(KIT, 'packs')), ['dotnet-shared']);
+    const texts = kitTexts().map(read).join('\n');
+    assert.doesNotMatch(texts, /turn budget|turn limit/i, 'a kit text states a turn budget');
+    assert.doesNotMatch(read('hooks/verify.mjs'), /redRecord|red-record|--start|RegressionGuard/, 'verify.mjs still holds the red check');
+    assert.doesNotMatch(skill('build-slice'), /sub-?agent[^\n]*(build|test) command|(build|test) command[^\n]*sub-?agent/i, 'build-slice runs a sub-agent per command');
   });
 });
 

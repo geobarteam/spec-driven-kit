@@ -1,28 +1,4 @@
-// Checks over the text of a pack item (BR-3, BR-4 of _specs/HarnessPacks/spec.md). Pure functions,
-// used by the kit's tests over every pack source.
-
-// BR-3: nothing of the Copilot rule-sync tool the packs were ported from, or of its Copilot form, may remain in a pack item.
-const BR3 = [
-  { pattern: 'token', regex: /\{\{[^}]*\}\}/ },
-  { pattern: 'copilot-sync', regex: /copilot-sync/i },
-  { pattern: '.copilotrc', regex: /\.copilotrc/i },
-  { pattern: 'planner', regex: /\bplanner\b/i },
-  { pattern: 'build-feature', regex: /\bbuild-feature\b/i },
-  { pattern: '_plans', regex: /\b_plans\b/ },
-  { pattern: '.github/', regex: /\.github\//i },
-  { pattern: 'mcp_', regex: /\bmcp_/ },
-];
-
-/** Every line that holds a BR-3 pattern, as { line, pattern }. */
-export function br3Violations(text) {
-  const found = [];
-  text.split(/\r?\n/).forEach((line, index) => {
-    for (const { pattern, regex } of BR3) {
-      if (regex.test(line)) found.push({ line: index + 1, pattern });
-    }
-  });
-  return found;
-}
+// Checks over the text of a pack item and the kit's texts. Pure functions, used by the kit's tests over every pack source.
 
 // BR-4: a reference to an agent or skill is @<name>. Not a reference: a package scope (@scope/…),
 // an e-mail address or a remote with a user (word character before the @), a git revision (@{…}).

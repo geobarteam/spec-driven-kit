@@ -304,8 +304,11 @@ function main() {
   const level = options.level ?? manifest.level ?? 3;
   const manualSkills = options.manualSkills ?? manifest.manualSkills ?? false;
   if (![1, 2, 3].includes(level)) throw new Error('--level is 1, 2 or 3');
-  // A project installed before packs existed has none recorded, and gets none.
-  const packs = checkPacks(options.packs ?? manifest.packs ?? []);
+  // A project installed before packs existed has none recorded, and gets none. A recorded pack the kit no longer has
+  // (kit 3.0.0 removed several) is dropped: its unchanged files are planned as remove, its changed ones are kept.
+  const recorded = manifest.packs ?? [];
+  const retired = options.packs ? [] : recorded.filter((name) => !kitPacks(KIT).includes(name));
+  const packs = checkPacks(options.packs ?? recorded.filter((name) => !retired.includes(name)));
 
   const files = { ...kitFiles(level, manualSkills), ...packFiles(KIT, packs) };
   const rows = plan(project, files, manifest);
@@ -313,7 +316,9 @@ function main() {
   const installed = { ...(manifest.files ?? {}) };
 
   console.log(`kit ${kitVersion()} -> ${project}`);
-  console.log(`installed there: ${manifest.kitVersion ?? 'nothing'}; level ${level}${manualSkills ? ', manual skills' : ''}, packs: ${packs.join(', ') || 'none'}\n`);
+  console.log(`installed there: ${manifest.kitVersion ?? 'nothing'}; level ${level}${manualSkills ? ', manual skills' : ''}, packs: ${packs.join(', ') || 'none'}`);
+  for (const name of retired) console.log(`pack ${name} is no longer in kit ${kitVersion()}: dropped; its unchanged files are removed`);
+  console.log('');
   for (const row of rows) {
     const force = options.overwrite.includes(row.path);
     let action = row.status;

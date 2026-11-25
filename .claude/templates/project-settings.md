@@ -17,7 +17,7 @@ In this repository that workflow leads. Do not use <the competing skills, by nam
 - **Protected branches** (never build on them): `<main>`
 - **Spec branch**: `<feature/<short-name>>` from `<base branch>`; one per spec, created by Claude when the spec starts, merged through a pull request
 - **Commit format**: `<type>(<scope>): <desc>`
-- **Guidelines**: <the roles of the installed guidelines, e.g. testing; coding, testing, architecture (Blazor Server)> <!-- only when a pack installs guidelines; the skills find the files by their first line, not by this line -->
+- **Guidelines**: <the roles of the installed guidelines, e.g. testing> <!-- only when a pack installs guidelines; the skills find the files by their first line, not by this line -->
 - **Models** (recommended since kit 2.6.5): `build-slice` on Sonnet 5.5 (benchmark exp18: the same quality floor as Opus at 3.22 against 5.78 USD); spec writing (`investigate`, `write-spec`, `amend-spec`) and review (`spec-critic`, `spec-reviewer`, the final review) stay on the stronger model, Opus 5.5 <!-- or: the models this project uses -->
 
 ### Test levels
@@ -34,21 +34,15 @@ In this repository that workflow leads. Do not use <the competing skills, by nam
 
 ### Code analysis
 
-- **Analysis** (run once per feature, in the final review, after the feature gate, on the feature's changed code with the quality gate; never per slice): <the project's own agent or command, e.g. the `sonar-review` agent, or the SonarScanner (begin, build, end) against the project's SonarQube server, reading the issues and the quality gate from its API> <!-- or: none; the final review then says "no code analysis declared" --> It needs on the machine the server URL, the project key (Pack values **Sonar project key**), the token in the environment variable (e.g. `SONAR_TOKEN`) and the scanner tool (for .NET `dotnet-sonarscanner`); when one is missing, the final review names it. The analysis never sends code anywhere the project's own settings do not already send it; it reads its token from the environment the project already uses, and the kit never stores a token, nor reads or prints one.
-- **Fix analysis**: <the project's own agent or skill that fixes the findings, e.g. the `code-analysis` agent (warnings from the build output, then the formatter) or the `fix-violations` skill (a fix per rule, Sonar rules included)> <!-- or: none; the final review fixes them under the coding guideline -->
-- **Analyzer warnings** (how a slice reads the new warnings in its files from the slice gate's build output; no separate build runs for it): <the filter, e.g. for .NET the lines matching `": (warning|error) (SA|SX|CA|CS|MSTEST)\d+"`> <!-- or: none; the whole build output is read -->
+- **Analysis** (run once per feature, in the final review, after the feature gate, on the feature's changed code; never per slice): <the project's analysis commands, e.g. for .NET `dotnet build -warnaserror -v q -nologo` with the built-in analyzers on, then `dotnet format --verify-no-changes`> <!-- or: none; the final review then says "no code analysis declared" --> Plain .NET practice, no server and no account: the analyzers ship with the .NET SDK and run in the build (`EnableNETAnalyzers` and `AnalysisLevel`, e.g. `latest-recommended`, and `EnforceCodeStyleInBuild` in `Directory.Build.props`, the rule severities in `.editorconfig`, `TreatWarningsAsErrors` where the project chooses it). It runs on the machine only and sends no code anywhere.
+- **Fix analysis**: <how the findings are fixed, e.g. `dotnet format` for style and the analyzers' code fixes, by hand for the rest> <!-- or: none; the final review fixes them by hand -->
 - **Formatter** (what fixes a failed format check of the slice gate, before the gate runs again): <e.g. `dotnet format <solution>`> <!-- or: none; the format check's own output says what to fix -->
-- **Warnings in the build**: every slice leaves no new warning in the files it touched (compiler and analyzers). Advice: reference the Sonar analyzer in the build (for .NET the `SonarAnalyzer.CSharp` package), so Sonar rules run locally on every build and a slice sees them before the server does. <!-- or: what the build runs instead -->
+- **Warnings in the build**: every slice leaves no new warning in the files it touched (compiler and analyzers); a rule is never switched off in `.editorconfig`, `Directory.Build.props` or with a suppression to get a build through. <!-- or: what the build runs instead -->
 
 ### Pack values
 
 <!-- Only with a pack installed: keep the lines of the installed packs, remove the others, and without a pack remove this heading. The pack's agents, skills and rules read the values by the label; no placeholder may remain. -->
 
-- **Sonar server URL**: `<https://sonar.example.com>` <!-- pack operations: the SonarQube server the project is analysed on; proposed from a sonar.host.url setting in the repository -->
-- **Sonar project key**: `<owner or project>_<repository name>` <!-- pack operations: the project's key on the Sonar server; proposed from the git remote -->
-- **Solution name**: `<the solution's name without extension>` <!-- pack dotnet-shared: proposed from the solution file -->
-- **Namespace root**: `<the root namespace of the solution>` <!-- pack dotnet-shared: proposed from the main project -->
-- **Unit-test command**: `<the command that runs the unit tests>`; one test: `<the same command with a filter>` <!-- pack dotnet-shared: the test command the setup ran; at level 2 and up the one in the Verification Commands; written with forward slashes, e.g. src/Test/Unit/X.Tests/bin/Debug/net8.0/X.Tests.exe, so that Git Bash, PowerShell and the unattended jobs all run it -->
 - **Test projects**: `<each test project's .csproj, in backticks, with forward slashes>` <!-- pack dotnet-shared: every test project of the solution (unit, UI, integration); the mutation check runs Stryker.NET with all of them -->
 - **Mutation threshold**: `80` <!-- pack dotnet-shared: the lowest mutation score a slice may end with, in percent; default 80 -->
 

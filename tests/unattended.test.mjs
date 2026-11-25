@@ -14,7 +14,7 @@ import { KIT, cleanup, install, kitCopy, project, record } from './helpers.mjs';
 
 const VERSION = '2.4.0';
 // The kit's current version (Lean 2.5.0 slice 6): what an update records and what the rules and plugin.json carry.
-const KIT_VERSION = '2.6.5'; // KitLean 2.6.5 (BR-89)
+const KIT_VERSION = '3.0.0';
 const SETTINGS = '.claude/settings.json';
 const FRAGMENT = '.claude/templates/settings-fragment.json';
 const KIT_ASK = [
@@ -176,14 +176,13 @@ describe('AC-P1: every documented test-executable command uses forward slashes',
       'Select-String -Pattern ": (warning|error) (SA|SX|CA|CS|MSTEST)\\d+"',
       '| `S1` and `S108` | a \\| b |',
       'const rel = path.split("\\\\").join("/");',
-      'the repositories live under one root, e.g. <reposRoot>\\Common\\devops',
+      'the repositories live under one root, e.g. <reposRoot>\\shared\\tools',
     ]) assert.deepEqual(backslashPathViolations(line), [], line);
   });
 
   test('AC-P1: the Project settings template and the setup say the commands are written with forward slashes', () => {
     assert.match(read(KIT, '.claude/templates/project-settings.md'), /forward slash/i);
     assert.match(read(KIT, '.claude/skills/setup/SKILL.md'), /forward slash/i);
-    assert.match(read(KIT, 'packs/dotnet-shared/rules/tests.md'), /forward slash/i);
   });
 });
 

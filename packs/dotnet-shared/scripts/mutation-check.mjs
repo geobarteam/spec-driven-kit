@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The slice's mutation check (spec-driven kit 2.6.5, pack dotnet-shared): the proof that the slice's tests can fail.
+// The slice's mutation check (spec-driven kit 3.0.0, pack dotnet-shared): the proof that the slice's tests can fail.
 // Installed as <project>/scripts/mutation-check.mjs.
 //
 //   node scripts/mutation-check.mjs --slice <name> --base <commit> [--feature <FeatureName>] [--files <path>...]
@@ -32,7 +32,7 @@ import { fileURLToPath } from 'node:url';
 
 export const DEFAULT_THRESHOLD = 80;
 export const TOOL = 'dotnet-stryker';
-const NOT_AVAILABLE = `${TOOL} not available: the package feed must carry it, see README`;
+const NOT_AVAILABLE = `${TOOL} not available: run dotnet tool restore (the tool comes from nuget.org), see README`;
 const EXIT = { green: 0, red: 1, usage: 2, tool: 3, stryker: 4 };
 const slash = (path) => path.split('\\').join('/');
 
