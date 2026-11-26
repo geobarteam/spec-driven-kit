@@ -3,9 +3,11 @@
 // <project>/.claude/hooks/verify.mjs.
 //   node .claude/hooks/verify.mjs                     the feature gate: run all, print each result, exit 1 on the first failure
 //   node .claude/hooks/verify.mjs --feature           the same
-//   node .claude/hooks/verify.mjs --slice <test>...   the slice gate: every command, the integration command
-//                                                     (verify.integration) filtered to the named tests; red
-//                                                     when the filter matches zero tests
+//   node .claude/hooks/verify.mjs --slice <test>...   the slice gate: every command but the format check
+//                                                     (verify.format), the integration command (verify.integration)
+//                                                     filtered to the named tests; red when the filter matches zero tests
+// Kit 3.0.0: the format check (dotnet format --verify-no-changes) never runs in the slice gate; it runs once per feature,
+// in the final review (the feature gate, then the Analysis), like the analyzers.
 //   --verbose (with either gate)                      every command's full output; by default one line per command
 //                                                     and, for a failing one, its failing tests and at most 30 lines
 // Kit 2.6.4: no red check (2.6.1 and 2.6.2 removed); the slice's tests prove they can fail through the mutation check of
@@ -123,8 +125,16 @@ const TEST_NAME = /^[\w.:-]+$/;
 const NO_TESTS = 'No test matches the given testcase filter|No test is available in|Zero tests ran|No tests found|no tests ran';
 
 /**
+ * What marks a Verification Command as the format check, which the slice gate leaves out: any `dotnet format` command
+ * (in verify.commands always its non-modifying form). A project sets verify.format, a regular expression, for another
+ * formatter's check.
+ */
+const FORMAT_CHECK = '\\bdotnet\\s+format\\b';
+
+/**
  * The commands of a gate. The feature gate (the default) is every command of verify.commands. The slice gate is
- * the same list with the integration command (verify.integration.command) filtered to the given tests:
+ * the same list without the format check (verify.format, or FORMAT_CHECK; returned as skipped), and with the
+ * integration command (verify.integration.command) filtered to the given tests:
  * `${command} ${filter}`, where {tests} in filter is each name put into test ({name}), joined by separator.
  * Without verify.integration the slice gate runs every command, and says so in note.
  * The slice gate's filtered command is also returned as filtered, with noTests: the pattern (verify.integration.noTests,
@@ -134,15 +144,19 @@ const NO_TESTS = 'No test matches the given testcase filter|No test is available
 export function gateCommands(config, gate = { mode: 'feature' }) {
   const verify = config.verify ?? {};
   const commands = verify.commands ?? [];
-  if (gate.mode !== 'slice') return { mode: 'feature', commands, integrationTests: null, note: null, filtered: null, noTests: null };
+  if (gate.mode !== 'slice') return { mode: 'feature', commands, skipped: [], integrationTests: null, note: null, filtered: null, noTests: null };
   const tests = gate.tests ?? [];
   if (tests.length === 0) throw new Error('the slice gate needs the integration tests written in this slice: --slice <test> [<test>...]');
   for (const name of tests) {
     if (!TEST_NAME.test(name)) throw new Error(`"${name}" is not a test name (letters, digits, _ . : - only)`);
   }
   const integration = verify.integration;
+  const format = new RegExp(verify.format || FORMAT_CHECK, 'i');
+  const isFormatCheck = (c) => c !== integration?.command && format.test(c);
+  const skipped = commands.filter(isFormatCheck);
+  const kept = commands.filter((c) => !isFormatCheck(c));
   if (!integration?.command) {
-    return { mode: 'slice', commands, integrationTests: tests, note: `no verify.integration in ${CONFIG}: the slice gate runs every integration test`, filtered: null, noTests: null };
+    return { mode: 'slice', commands: kept, skipped, integrationTests: tests, note: `no verify.integration in ${CONFIG}: the slice gate runs every integration test`, filtered: null, noTests: null };
   }
   if (!commands.includes(integration.command)) {
     throw new Error(`verify.integration.command "${integration.command}" is not one of verify.commands in ${CONFIG}`);
@@ -152,7 +166,7 @@ export function gateCommands(config, gate = { mode: 'feature' }) {
   const filter = (integration.filter ?? '{tests}').split('{tests}').join(joined);
   const filtered = `${integration.command} ${filter}`;
   return {
-    mode: 'slice', commands: commands.map((c) => (c === integration.command ? filtered : c)), integrationTests: tests, note: null,
+    mode: 'slice', commands: kept.map((c) => (c === integration.command ? filtered : c)), skipped, integrationTests: tests, note: null,
     filtered, noTests: integration.noTests || NO_TESTS,
   };
 }
@@ -232,6 +246,7 @@ if (isMain) {
     : 'feature gate (every Verification Command, every integration test)';
   if (verbose) console.log(`Running the ${label}.`);
   if (plan.note) console.log(`Note: ${plan.note}.`);
+  for (const command of plan.skipped) console.log(`SKIP  ${command}  (the format check runs once per feature, in the final review)`);
   // By default one line per command; for the failing one its failing tests and at most EXCERPT lines of its output.
   const outcome = runVerify(root, config, (r) => {
     if (verbose && r.fullOutput.trim()) console.log(r.fullOutput.trimEnd());

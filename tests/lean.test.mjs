@@ -702,6 +702,8 @@ const STEP = [
   "if (args.some((a) => a.includes('Quiet'))) console.log('Nothing to run here');",
 ].join('\n');
 const STEPS = ['build', 'unit', 'ui', 'it', 'format'].map((name) => `node step.mjs ${name}`);
+// 3.0.0: the fifth step is the project's format check (verify.format); the slice gate leaves it out.
+const FORMAT = 'step\\.mjs format';
 const INTEGRATION = { command: 'node step.mjs it', filter: '--only {tests}', test: '{name}', separator: ',' };
 const sliceGit = (dir, args) => execFileSync('git', ['-c', 'user.name=kit', '-c', 'user.email=kit@example.org', ...args], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
@@ -710,7 +712,7 @@ function gateProject(kit, integration = INTEGRATION) {
   const dir = project();
   const run = install(kit, 'apply', dir, '--level', '2');
   assert.equal(run.status, 0, run.output);
-  const config = { specsDir: '_specs', protectedBranches: ['main'], allowOnProtected: ['_specs/', '.claude/', 'CLAUDE.md'], verify: { shell: null, failPattern: null, commands: STEPS, ...(integration ? { integration } : {}) } };
+  const config = { specsDir: '_specs', protectedBranches: ['main'], allowOnProtected: ['_specs/', '.claude/', 'CLAUDE.md'], verify: { shell: null, failPattern: null, commands: STEPS, format: FORMAT, ...(integration ? { integration } : {}) } };
   writeFileSync(join(dir, '.claude/spec-driven.json'), JSON.stringify(config, null, 2));
   writeFileSync(join(dir, 'step.mjs'), STEP);
   writeFileSync(join(dir, '.gitignore'), 'artifacts/\n.claude/spec-driven.state.json\n');
@@ -750,11 +752,12 @@ describe('KitLean slice 10: two gates (D13), the slice gate per slice and the fe
   before(() => { kit = kitCopy(); });
   after(cleanup);
 
-  test('outer test (AC-24): --slice runs every Verification Command and the integration command only for the named tests, and says so', () => {
+  test('outer test (AC-24): --slice runs every Verification Command but the format check, and the integration command only for the named tests, and says so', () => {
     const dir = gateProject(kit);
     const run = verify(dir, '--slice', 'ExportTests.AC1_Csv', 'ExportTests.AC2_Guard');
     assert.equal(run.status, 0, run.output);
-    assert.deepEqual(ran(dir), [['build'], ['unit'], ['ui'], ['it', '--only', 'ExportTests.AC1_Csv,ExportTests.AC2_Guard'], ['format']], 'the slice gate did not run the unit, UI and format commands in full and the integration command filtered');
+    assert.deepEqual(ran(dir), [['build'], ['unit'], ['ui'], ['it', '--only', 'ExportTests.AC1_Csv,ExportTests.AC2_Guard']], 'the slice gate did not run the unit and UI commands in full and the integration command filtered, without the format check');
+    assert.match(run.output, /SKIP {2}node step\.mjs format[^\n]*final review/, 'the slice gate does not say it left the format check to the final review');
     assert.match(run.output, /slice gate/i, 'the output does not name the slice gate');
     assert.match(run.output, /ExportTests\.AC1_Csv[^\n]*ExportTests\.AC2_Guard/, 'the output does not name the integration tests it included');
     const state = stateOf(dir);
@@ -784,15 +787,39 @@ describe('KitLean slice 10: two gates (D13), the slice gate per slice and the fe
     const commands = ['dotnet build App.sln', 'dotnet test src/Test/Unit/App.Unit.csproj', 'dotnet test src/Test/UI/App.UI.csproj', 'dotnet test src/Test/Integration/App.Integration.csproj', 'dotnet format App.sln --verify-no-changes'];
     const config = { verify: { commands, integration: { command: commands[3], filter: '--filter "{tests}"', test: 'FullyQualifiedName~{name}', separator: '|' } } };
     const slice = gateCommands(config, { mode: 'slice', tests: ['ExportTests.AC1_Csv', 'ExportTests.AC2_Guard'] });
-    assert.deepEqual(slice.commands, [...commands.slice(0, 3), `${commands[3]} --filter "FullyQualifiedName~ExportTests.AC1_Csv|FullyQualifiedName~ExportTests.AC2_Guard"`, commands[4]]);
+    assert.deepEqual(slice.commands, [...commands.slice(0, 3), `${commands[3]} --filter "FullyQualifiedName~ExportTests.AC1_Csv|FullyQualifiedName~ExportTests.AC2_Guard"`]);
     assert.deepEqual(gateCommands(config, { mode: 'feature' }).commands, commands);
+  });
+
+  // 3.0.0: the format check runs once per feature, in the final review, like the analyzers; never in the slice gate.
+  test('AC-24: the slice gate never runs the format check, with or without verify.integration and without verify.format; the feature gate does', async () => {
+    const { gateCommands } = await import(pathToFileURL(join(KIT, 'hooks/verify.mjs')).href);
+    const format = 'dotnet format App.sln --verify-no-changes';
+    const commands = ['dotnet build App.sln', 'dotnet test src/Test/Unit/App.Unit.csproj', 'dotnet test src/Test/Integration/App.Integration.csproj', format];
+    const integration = { command: commands[2], filter: '--filter "{tests}"', test: 'FullyQualifiedName~{name}', separator: '|' };
+    for (const verify of [{ commands, integration }, { commands }]) {
+      const slice = gateCommands({ verify }, { mode: 'slice', tests: ['ExportTests'] });
+      assert.ok(!slice.commands.some((c) => /dotnet\s+format/.test(c)), `the slice gate runs the format check: ${slice.commands.join(' ; ')}`);
+      assert.deepEqual(slice.skipped, [format], 'the slice gate does not report the format check it left out');
+      assert.ok(gateCommands({ verify }).commands.includes(format), 'the feature gate no longer runs the format check');
+    }
+    const prettier = { commands: ['npm run build', 'npx prettier --check .'], format: 'prettier --check' };
+    assert.deepEqual(gateCommands({ verify: prettier }, { mode: 'slice', tests: ['ExportTests'] }).commands, ['npm run build'], 'verify.format does not name the format check');
+  });
+
+  test('AC-24: the rules, build-slice, the Project settings, T-10 and the README say the slice gate runs no format check', () => {
+    for (const rel of ['.claude/rules/spec-driven.md', '.claude/skills/build-slice/SKILL.md', '.claude/templates/project-settings.md', 'packs/dotnet-shared/rules/testing-for-agents.md', 'README.md']) {
+      const text = read(rel);
+      assert.match(text, /no format check/i, `${rel} does not say the slice gate runs no format check`);
+      assert.doesNotMatch(text, /integration tests(?: written in the slice)?, (?:and )?the format check/i, `${rel} still lists the format check in the slice gate`);
+    }
   });
 
   test('AC-24: without verify.integration the slice gate runs every command and says so', () => {
     const dir = gateProject(kit, null);
     const run = verify(dir, '--slice', 'ExportTests.AC1_Csv');
     assert.equal(run.status, 0, run.output);
-    assert.deepEqual(ran(dir), [['build'], ['unit'], ['ui'], ['it'], ['format']]);
+    assert.deepEqual(ran(dir), [['build'], ['unit'], ['ui'], ['it']], 'without verify.integration the slice gate ran the format check or not every other command');
     assert.match(run.output, /verify\.integration/, 'the output does not say the integration command is not configured');
   });
 
@@ -1160,9 +1187,11 @@ const AT_6BA02BE = {
  * 2.6.4 (D22, BR-83, AC-88): the red check is removed: verify.mjs is the 2.6.0 runner again (its comments name the slice
  * file and the mutation check), guard.mjs loses guard 5; both pins move to 2.6.4 (were 4c1c57cb... and aef458ef... at
  * 2.6.2); what changed is checked by the AC-87 test, the earlier behavior by the tests of slices 10, 16, 17 and 21.
+ * 3.0.0: the slice gate leaves out the format check (verify.format, by default any `dotnet format` command); verify.mjs's
+ * pin moves to 3.0.0 (was f024dd3f... at 2.6.4); what changed is checked by the slice 10 tests. guard.mjs unchanged.
  */
 const HOOKS_PINNED = {
-  'hooks/verify.mjs': 'f024dd3fb46947d08e77ce138be6c9dcb88f7e8a10f39cf695727bdd8e359e2b',
+  'hooks/verify.mjs': 'f88ea24ace8029a4efcf26c143009cc8b956ca763925f50ef9743d0da19b0bbb',
   'hooks/guard.mjs': '719793735ebe075940f2be65ab06695510e546f7db349b6f1e7781991077cc5c',
 };
 const assertHooksPinned = () => {

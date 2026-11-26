@@ -28,7 +28,7 @@ Read each file once (Grep or Glob first, then the range you need); use quiet bui
 
 ## Verification is the gate
 
-Run `node .claude/hooks/verify.mjs --slice <IntegrationTestClass>` until it is green, fixing what it reports (a filter that matches zero tests is red). Quote its last line.
+Run `node .claude/hooks/verify.mjs --slice <IntegrationTestClass>` until it is green, fixing what it reports (a filter that matches zero tests is red). Quote its last line. It runs no format check: `dotnet format --verify-no-changes` runs once per feature, like the analyzers, never per slice.
 Then the mutation check, the proof that the slice's tests can fail (with the dotnet-shared pack): `node scripts/mutation-check.mjs --slice <n> --base <commit>` (the slice's base) until it is green. It mutates and scores only the slice's changed lines: a survivor outside the slice's changed lines is never a reason to add a test, and tests for existing behaviour are out of scope unless the spec asks for them (R-1 to R-7). It writes `_specs/<Feature>/mutation-<n>.md`; classify each survivor there with one line why. A survivor is 'equivalent' only if no test could ever observe the change (same output, state and side effects for every input). Code that is merely untested or 'out of scope' is not equivalent: add or strengthen a test (seen red first), or list it as 'accepted' for the reviewer to approve. Never weaken code or delete a line to raise the score.
 
 ## The record is the final answer
